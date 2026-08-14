@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-electron/
+release/
+coverage/
+artifacts/
+.monitor-manager-smoke-data/
+*.log
+.DS_Store
+Thumbs.db
