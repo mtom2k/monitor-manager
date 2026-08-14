@@ -2,6 +2,27 @@
 
 All notable changes are recorded here.
 
+## 0.2.0 - 2026-08-14
+
+### Added
+
+- Detection for Windows Duplicate projection mode and shared-source mirrored targets.
+- A clear Duplicate-mode notice and per-monitor mirrored status badges.
+- Automated coverage for stable target matching when mirrored monitors share a Windows source.
+
+### Changed
+
+- Blocked saving and editing the mirrored Current setup because the profile schema represents independent display sources.
+- Made saved profile application leave Duplicate mode through Windows Extend before restoring exact profile settings.
+- Prioritized stable physical monitor identifiers over shared GDI source fallbacks throughout profile and cache matching.
+- Preserved last-known independent modes while Duplicate mode is active.
+
+### Verified
+
+- Tested Win+P Duplicate, PC screen only, Second screen only, and Extend on two physical 4K monitors.
+- Confirmed a saved profile exits Duplicate mode and restores resolution, refresh rate, position, rotation, scaling, primary role, and HDR.
+- Confirmed the original two-monitor setup was restored exactly after every projection test.
+
 ## 0.1.2 - 2026-08-14
 
 ### Added

@@ -46,6 +46,7 @@ export class MacOsDisplayAdapter implements DisplayAdapter {
         name: display._name ?? `Display ${index + 1}`,
         connection: display.spdisplays_connection_type?.toLowerCase().includes('internal') ? 'Internal' : 'Unknown',
         enabled: display.spdisplays_online !== 'spdisplays_no',
+        mirrored: false,
         primary: display.spdisplays_main === 'spdisplays_yes',
         hdrSupported: false,
         hdrEnabled: false,

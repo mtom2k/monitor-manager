@@ -57,6 +57,7 @@ The renderer has no direct Node.js access. Electron context isolation is enabled
 
 - stable and fallback identifiers;
 - connection type and enabled state;
+- whether an active target shares its Windows source with another target;
 - primary and HDR state;
 - position, resolution, refresh rate, and rotation;
 - current scale and valid scale choices;
@@ -81,6 +82,8 @@ The application writes local JSON under Electron's per-user `userData` directory
 
 `known-displays.json` stores the last usable active state for each display. Windows often omits source mode, position, rotation, and scaling information after a monitor is disabled. Monitor Manager hydrates the inactive target from this cache so the monitor remains editable and can return with its previous configuration.
 
+Mirrored scans are not written to the last-known cache. Their shared resolution, orientation, and refresh rate are temporary projection values and must not replace a monitor's independent recovery state.
+
 No telemetry, account, cloud service, or external database is used.
 
 ## Display identity
@@ -93,6 +96,8 @@ The primary Windows identifier is the normalized device interface path returned 
 2. Current platform source identifier.
 
 After topology changes, Windows can expose active and inactive sources for the same physical monitor. Enumeration groups duplicate stable identifiers and keeps the active path. Available inactive targets are synthesized and then hydrated from last-known state.
+
+Stable target matching always runs before source fallback matching. This ordering is required in Duplicate mode because multiple physical targets can share the same GDI source name.
 
 ## Windows implementation
 
@@ -109,12 +114,26 @@ Native operations include:
 
 When a profile changes the active monitor set, application occurs in this order:
 
-1. Submit the requested active CCD paths with invalid mode indices so Windows can establish valid paths.
-2. Re-query the active paths.
-3. Commit exact source geometry, position, target refresh rate, and rotation.
-4. Re-query source identifiers and apply requested desktop scaling.
-5. Apply HDR preferences to active targets.
-6. Refresh native state and return the accepted configuration to the renderer.
+1. If Duplicate mode is active, request the persisted Windows Extend topology.
+2. Submit the requested active CCD paths with invalid mode indices so Windows can establish valid independent paths.
+3. Re-query the active paths.
+4. Commit exact source geometry, position, target refresh rate, and rotation.
+5. Re-query source identifiers and apply requested desktop scaling.
+6. Apply HDR preferences to active targets.
+7. Refresh native state and return the accepted configuration to the renderer.
+
+## Windows projection compatibility
+
+Monitor Manager and Win+P both modify the same CCD state, so neither owns the display configuration exclusively. Electron display-added, display-removed, and display-metrics-changed events trigger a debounced native refresh after an external Windows change.
+
+| Win+P topology | Behavior |
+| --- | --- |
+| PC screen only | One active target and inactive targets retained for recovery |
+| Second screen only | One active target and inactive targets retained for recovery |
+| Extend | Fully represented by the profile model |
+| Duplicate | Detected as multiple active targets sharing one source; current layout is read-only and cannot be saved |
+
+A saved profile can exit Duplicate mode. Windows first restores its persisted Extend topology, then Monitor Manager applies the profile's exact active targets and signal settings. This two-step transition is required because the tested NVIDIA CCD stack rejected a direct supplied-path conversion from clone to extend with `ERROR_INVALID_PARAMETER`.
 
 The DPI packet types used for Windows percentage scaling are not listed in Microsoft's public `DISPLAYCONFIG_DEVICE_INFO_TYPE` enum. The helper validates the source-reported range, exposes only accepted standard values, treats failure as a warning, and keeps topology application independent from scale application.
 
@@ -132,6 +151,7 @@ macOS models UI scaling with "looks like" resolutions instead of Windows-style p
 - Disabled Windows targets remain visible when the operating system still reports an available physical path.
 - Native responses use `{ ok, message, warnings, data }`.
 - Failed commits do not replace the current renderer draft.
+- Duplicate layouts are detected and blocked from profile capture or direct editing.
 - The app refreshes native state after every successful operation.
 - Profile deletion requires explicit confirmation.
 - External URLs are restricted to HTTP and HTTPS.

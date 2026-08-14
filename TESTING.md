@@ -11,11 +11,12 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current suite contains 16 tests across 6 files. Coverage includes:
+The current suite contains 20 tests across 6 files. Coverage includes:
 
 - tray version-label formatting;
 - profile deletion confirmation;
 - stable and fallback display matching;
+- stable target precedence when mirrored targets share one Windows source;
 - primary-display normalization;
 - rejection of configurations with zero enabled monitors;
 - inactive-target hydration from last-known state;
@@ -24,6 +25,8 @@ The current suite contains 16 tests across 6 files. Coverage includes:
 - per-profile scaling persistence;
 - primary-star behavior in Arrangement Preview;
 - Windows PowerShell helper encoding safety.
+- Duplicate-mode UI safeguards.
+- preservation of last-known independent modes during Duplicate mode.
 
 ## Native Windows discovery
 
@@ -61,8 +64,14 @@ Environment:
 | Enumerate scale choices | Pass, 100% through 350% on both displays |
 | Change M28U scale | Pass, 150% to 125% with no warnings |
 | Restore M28U scale | Pass, returned to 150% with other settings unchanged |
+| Win+P Duplicate discovery | Pass, two enabled mirrored targets on one shared source |
+| Save or edit Duplicate mode | Pass, blocked with an explanatory notice |
+| Apply saved profile from Duplicate | Pass, exited Duplicate and restored exact independent settings |
+| Win+P PC screen only | Pass, one active and one recoverable inactive target |
+| Win+P Second screen only | Pass, one active and one recoverable inactive target |
+| Win+P Extend | Pass, exact baseline retained |
 | Packaged native helper path | Pass |
-| Packaged tray version row | Pass, Version 0.1.2 directly above Quit |
+| Packaged tray version row | Pass, Version 0.2.0 directly above Quit |
 | Main interface visual review | Pass |
 | Signal controls visual review | Pass |
 | Settings visual review | Pass |
@@ -75,6 +84,13 @@ The final hardware state was restored after every topology or scaling test:
 - M28U: 2160 x 3840 at 144 Hz, portrait, 150% scaling, HDR off
 
 ## Release artifacts
+
+Monitor Manager 0.2.0 SHA-256 hashes:
+
+```text
+portable  DD19138EDA07CA598715172B1FF8CA2FD2A4C007A9C12F594B3E2BFAE577BEBC
+setup     B2AE83D8225B1C7D053A53469A0A1635E2431E00E2B1D0414CDCEF605AF108B6
+```
 
 Monitor Manager 0.1.2 SHA-256 hashes:
 
@@ -98,7 +114,7 @@ The packaged tray menu can be serialized with:
 
 ```powershell
 $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
-& '.\release\Monitor Manager-0.1.2-x64-portable.exe'
+& '.\release\Monitor Manager-0.2.0-x64-portable.exe'
 ```
 
 ## Manual release checklist
@@ -109,7 +125,10 @@ $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
 - [ ] Confirm the primary star follows primary-display changes.
 - [ ] Save two profiles with different signal and scaling settings for one monitor, then verify each profile restores its values.
 - [ ] Disable a secondary monitor and restore it from Current setup.
-- [ ] Confirm Version 0.1.2 appears immediately above Quit Monitor Manager.
+- [ ] Enter Duplicate with Win+P and confirm both physical monitors are labeled Mirrored by Windows.
+- [ ] Confirm Duplicate Current setup cannot be saved or edited.
+- [ ] Apply a saved extended profile from Duplicate and confirm independent modes are restored.
+- [ ] Confirm Version 0.2.0 appears immediately above Quit Monitor Manager.
 - [ ] Confirm closing the window leaves the tray process running.
 - [ ] Confirm Quit Monitor Manager exits the process.
 - [ ] Confirm Identify overlays appear on every active monitor.

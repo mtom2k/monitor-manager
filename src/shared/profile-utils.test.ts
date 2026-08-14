@@ -26,6 +26,13 @@ describe('profile utilities', () => {
     expect(findProfileDisplay([display], 'new-id', 'SYSTEM-OLD-ID')).toBe(display);
   });
 
+  it('prefers a stable target match when mirrored displays share one source', () => {
+    const first = { ...makeDisplay('first'), fallbackSystemId: 'shared-source' };
+    const second = { ...makeDisplay('second'), fallbackSystemId: 'shared-source' };
+
+    expect(findProfileDisplay([first, second], 'second', 'shared-source')).toBe(second);
+  });
+
   it('guarantees one primary display among enabled displays', () => {
     const normalized = normalizeProfileDisplays([
       makeDisplay('a', false, true),

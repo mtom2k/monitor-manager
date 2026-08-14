@@ -1,12 +1,14 @@
 import type { DisplayInfo } from './types';
 
-function sameDisplay(left: DisplayInfo, right: DisplayInfo): boolean {
-  return (
-    left.id.localeCompare(right.id, undefined, { sensitivity: 'accent' }) === 0 ||
-    (Boolean(left.systemId) &&
-      Boolean(right.systemId) &&
-      left.systemId.localeCompare(right.systemId, undefined, { sensitivity: 'accent' }) === 0)
-  );
+function findSameDisplay(displays: DisplayInfo[], target: DisplayInfo): DisplayInfo | undefined {
+  const stableMatch = displays.find((display) => (
+    display.id.localeCompare(target.id, undefined, { sensitivity: 'accent' }) === 0
+  ));
+  if (stableMatch || !target.systemId) return stableMatch;
+  return displays.find((display) => (
+    Boolean(display.systemId) &&
+    display.systemId.localeCompare(target.systemId, undefined, { sensitivity: 'accent' }) === 0
+  ));
 }
 
 function cloneDisplay(display: DisplayInfo): DisplayInfo {
@@ -39,7 +41,7 @@ export function hydrateKnownDisplayState(
   const hydrated = liveDisplays.map((liveDisplay) => {
     if (liveDisplay.enabled || hasUsableMode(liveDisplay)) return cloneDisplay(liveDisplay);
 
-    const stored = storedDisplays.find((candidate) => sameDisplay(liveDisplay, candidate));
+    const stored = findSameDisplay(storedDisplays, liveDisplay);
     if (!stored) return cloneDisplay(liveDisplay);
 
     return {
@@ -50,14 +52,16 @@ export function hydrateKnownDisplayState(
       adapterName: liveDisplay.adapterName || stored.adapterName,
       connection: liveDisplay.connection === 'Unknown' ? stored.connection : liveDisplay.connection,
       enabled: false,
+      mirrored: false,
       primary: false,
     };
   });
 
   const knownDisplays = storedDisplays.map(cloneDisplay);
   for (const display of liveDisplays) {
-    if (!display.enabled || !hasUsableMode(display)) continue;
-    const existingIndex = knownDisplays.findIndex((candidate) => sameDisplay(display, candidate));
+    if (!display.enabled || display.mirrored || !hasUsableMode(display)) continue;
+    const existing = findSameDisplay(knownDisplays, display);
+    const existingIndex = existing ? knownDisplays.indexOf(existing) : -1;
     const snapshot = cloneDisplay(display);
     if (existingIndex >= 0) knownDisplays.splice(existingIndex, 1, snapshot);
     else knownDisplays.push(snapshot);

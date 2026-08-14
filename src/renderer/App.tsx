@@ -3,6 +3,7 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  Copy,
   CopyPlus,
   Eye,
   Info,
@@ -60,6 +61,7 @@ export function mergeProfile(displays: DisplayInfo[], profile: DisplayProfile): 
     if (!saved) return display;
     return {
       ...display,
+      mirrored: false,
       enabled: saved.enabled,
       primary: saved.primary,
       hdrEnabled: saved.hdrEnabled,
@@ -93,6 +95,7 @@ export function App() {
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId);
   const selectedDisplay = draftDisplays.find((display) => display.id === selectedDisplayId) ?? draftDisplays[0];
+  const currentSetupMirrored = selectedProfileId === 'current' && draftDisplays.some((display) => display.enabled && display.mirrored);
 
   const showToast = useCallback((next: ToastState) => {
     setToast(next);
@@ -196,6 +199,10 @@ export function App() {
   };
 
   const saveProfile = async (name?: string, createNew = false) => {
+    if (draftDisplays.some((display) => display.enabled && display.mirrored)) {
+      showToast({ kind: 'error', message: 'Windows Duplicate mode cannot be saved as a Monitor Manager profile. Choose Extend in Win+P first.' });
+      return null;
+    }
     const targetName = name ?? selectedProfile?.name;
     if (!targetName) {
       setNameDialog({ mode: 'create', value: 'My display profile' });
@@ -234,6 +241,10 @@ export function App() {
   };
 
   const applyCurrentChanges = async () => {
+    if (currentSetupMirrored) {
+      showToast({ kind: 'error', message: 'Choose Extend in Win+P, or apply a saved profile to leave Duplicate mode.' });
+      return;
+    }
     setWorking(true);
     try {
       const result = await window.monitorManager.applyConfiguration({
@@ -360,6 +371,9 @@ export function App() {
             {snapshot && !snapshot.capabilities.canToggleHdr && (
               <div className="notice"><Info size={18} /><span>{snapshot.capabilities.notes[0]}</span></div>
             )}
+            {currentSetupMirrored && (
+              <div className="notice warning" role="status"><Copy size={18} /><span><strong>Windows Duplicate mode is active.</strong> Mirrored layouts cannot be saved or edited. Choose Extend in Win+P, or apply a saved profile to restore an independent layout.</span></div>
+            )}
             <Topology displays={draftDisplays} selectedId={selectedDisplay?.id} onSelect={setSelectedDisplayId} />
 
             <section className="display-section">
@@ -401,12 +415,12 @@ export function App() {
         {!settingsOpen && (
           <div className="actionbar">
             <div className="actionbar-copy">
-              {selectedProfile ? <><Save size={17} /><span>{dirty ? 'Save changes, then apply this profile.' : 'Ready to switch to this profile.'}</span></> : <><CircleAlert size={17} /><span>{dirty ? 'Apply these changes now, or save them for tray access.' : 'Disabled monitors stay here so they can be switched back on.'}</span></>}
+              {selectedProfile ? <><Save size={17} /><span>{dirty ? 'Save changes, then apply this profile.' : 'Ready to switch to this profile.'}</span></> : currentSetupMirrored ? <><Copy size={17} /><span>Duplicate mode is controlled by Windows. Apply a saved profile to return to an extended layout.</span></> : <><CircleAlert size={17} /><span>{dirty ? 'Apply these changes now, or save them for tray access.' : 'Disabled monitors stay here so they can be switched back on.'}</span></>}
             </div>
             <div className="actionbar-buttons">
-              <button className="button secondary" onClick={() => void saveProfile()} disabled={working}><Save size={17} />{selectedProfile ? 'Save' : 'Save as profile'}</button>
+              <button className="button secondary" onClick={() => void saveProfile()} disabled={working || currentSetupMirrored} title={currentSetupMirrored ? 'Duplicate mode cannot be saved as a profile' : undefined}><Save size={17} />{selectedProfile ? 'Save' : 'Save as profile'}</button>
               {selectedProfile && <button className="button primary" onClick={applySelected} disabled={working}>{working ? <LoaderCircle className="spin" size={17} /> : <Play size={17} fill="currentColor" />}Apply profile</button>}
-              {!selectedProfile && <button className="button primary" onClick={applyCurrentChanges} disabled={working || !dirty}>{working ? <LoaderCircle className="spin" size={17} /> : <Play size={17} fill="currentColor" />}Apply changes</button>}
+              {!selectedProfile && <button className="button primary" onClick={applyCurrentChanges} disabled={working || !dirty || currentSetupMirrored} title={currentSetupMirrored ? 'Choose Extend in Win+P or apply a saved profile' : undefined}>{working ? <LoaderCircle className="spin" size={17} /> : <Play size={17} fill="currentColor" />}Apply changes</button>}
             </div>
           </div>
         )}
@@ -420,7 +434,7 @@ export function App() {
             <h2>{nameDialog.mode === 'rename' ? 'Rename profile' : 'Save display profile'}</h2>
             <p>{nameDialog.mode === 'rename' ? 'Choose a clear name for this arrangement.' : 'This captures enabled monitors, layout, resolution, refresh rate, scaling, rotation, and HDR preferences.'}</p>
             <label>Profile name<input autoFocus value={nameDialog.value} onChange={(event) => setNameDialog({ ...nameDialog, value: event.target.value })} onFocus={(event) => event.target.select()} /></label>
-            <div className="modal-actions"><button type="button" className="button secondary" onClick={() => setNameDialog(null)}>Cancel</button><button className="button primary" disabled={!nameDialog.value.trim()}><Save size={17} />Save profile</button></div>
+            <div className="modal-actions"><button type="button" className="button secondary" onClick={() => setNameDialog(null)}>Cancel</button><button className="button primary" disabled={!nameDialog.value.trim() || currentSetupMirrored} title={currentSetupMirrored ? 'Duplicate mode cannot be saved as a profile' : undefined}><Save size={17} />Save profile</button></div>
           </form>
         </div>
       )}
@@ -492,7 +506,7 @@ function DisplayCard({ display, number, selected, canToggleHdr, onSelect, onTogg
       <div className="display-card-top">
         <div className="display-glyph"><Monitor size={24} /><span>{number}</span></div>
         <div className="display-title"><strong>{display.name}</strong><span>{display.connection} · {display.systemId}</span></div>
-        <button className={`switch ${display.enabled ? 'on' : ''}`} role="switch" aria-checked={display.enabled} title={display.enabled ? 'Disable this monitor in the profile' : 'Enable this monitor in the profile'} onClick={(event) => { event.stopPropagation(); onToggle(); }}><span /></button>
+        <button className={`switch ${display.enabled ? 'on' : ''}`} role="switch" aria-checked={display.enabled} disabled={display.mirrored} title={display.mirrored ? 'Choose Extend in Win+P before editing this monitor' : display.enabled ? 'Disable this monitor in the profile' : 'Enable this monitor in the profile'} onClick={(event) => { event.stopPropagation(); onToggle(); }}><span /></button>
       </div>
       <div className="display-stats">
         <span><small>Resolution</small>{display.mode.width > 0 ? `${display.mode.width} × ${display.mode.height}` : 'Automatic'}</span>
@@ -500,8 +514,9 @@ function DisplayCard({ display, number, selected, canToggleHdr, onSelect, onTogg
         <span><small>Scale</small>{display.enabled ? `${display.scalePercent}%` : '—'}</span>
       </div>
       <div className="display-badges">
-        <button className={display.primary ? 'active' : ''} disabled={!display.enabled} title="Make this the primary monitor" onClick={(event) => { event.stopPropagation(); onPrimary(); }}><Star size={14} fill={display.primary ? 'currentColor' : 'none'} />{display.primary ? 'Primary' : 'Set primary'}</button>
-        <button className={display.hdrEnabled ? 'active hdr' : ''} disabled={!display.enabled || !display.hdrSupported || !canToggleHdr} title={!display.hdrSupported ? 'This monitor does not report HDR support' : 'Toggle HDR for this monitor'} onClick={(event) => { event.stopPropagation(); onHdr(!display.hdrEnabled); }}>{display.hdrEnabled ? <SunMedium size={14} /> : <MoonStar size={14} />}HDR {display.hdrEnabled ? 'on' : 'off'}</button>
+        {display.mirrored && <span className="mirrored-badge" title="This monitor currently shares a Windows display source"><Copy size={14} />Mirrored by Windows</span>}
+        <button className={display.primary ? 'active' : ''} disabled={!display.enabled || display.mirrored} title="Make this the primary monitor" onClick={(event) => { event.stopPropagation(); onPrimary(); }}><Star size={14} fill={display.primary ? 'currentColor' : 'none'} />{display.primary ? 'Primary' : 'Set primary'}</button>
+        <button className={display.hdrEnabled ? 'active hdr' : ''} disabled={!display.enabled || display.mirrored || !display.hdrSupported || !canToggleHdr} title={!display.hdrSupported ? 'This monitor does not report HDR support' : 'Toggle HDR for this monitor'} onClick={(event) => { event.stopPropagation(); onHdr(!display.hdrEnabled); }}>{display.hdrEnabled ? <SunMedium size={14} /> : <MoonStar size={14} />}HDR {display.hdrEnabled ? 'on' : 'off'}</button>
       </div>
     </article>
   );
@@ -519,12 +534,12 @@ function DisplayEditor({ display, onMode, onScale, onRotation }: {
     .filter((value) => value > 0)
     .sort((left, right) => left - right);
   return (
-    <section className={`signal-editor ${!display.enabled ? 'disabled' : ''}`}>
+    <section className={`signal-editor ${!display.enabled || display.mirrored ? 'disabled' : ''}`}>
       <div><h3>Signal settings</h3><p>Settings for {display.name}</p></div>
-      <label>Resolution<div className="select-wrap"><select value={resolutionKey(display.mode)} disabled={!display.enabled} onChange={(event) => { const mode = selectResolution(display.mode, display.availableModes, event.target.value); if (mode) onMode(mode); }}>{resolutions.map((mode) => <option key={resolutionKey(mode)} value={resolutionKey(mode)}>{mode.width} × {mode.height}</option>)}</select><ChevronDown size={16} /></div></label>
-      <label>Refresh rate<div className="select-wrap"><select value={Math.round(display.mode.refreshRate * 100)} disabled={!display.enabled} onChange={(event) => { const mode = selectRefreshRate(display.mode, display.availableModes, Number(event.target.value)); if (mode) onMode(mode); }}>{refreshRates.map((rate) => <option key={Math.round(rate * 100)} value={Math.round(rate * 100)}>{Number(rate.toFixed(2))} Hz</option>)}</select><ChevronDown size={16} /></div></label>
-      <label>Scaling<div className="select-wrap"><select value={display.scalePercent} disabled={!display.enabled || scalePercents.length < 2} title={scalePercents.length < 2 ? 'This platform did not report additional scaling choices' : 'Set desktop text and app scaling for this display'} onChange={(event) => onScale(Number(event.target.value))}>{scalePercents.map((scale) => <option key={scale} value={scale}>{scale}%</option>)}</select><ChevronDown size={16} /></div></label>
-      <label>Orientation<div className="select-wrap"><select value={display.rotation} disabled={!display.enabled} onChange={(event) => onRotation(Number(event.target.value) as 0 | 90 | 180 | 270)}><option value={0}>Landscape</option><option value={90}>Portrait</option><option value={180}>Landscape (flipped)</option><option value={270}>Portrait (flipped)</option></select><ChevronDown size={16} /></div></label>
+      <label>Resolution<div className="select-wrap"><select value={resolutionKey(display.mode)} disabled={!display.enabled || display.mirrored} onChange={(event) => { const mode = selectResolution(display.mode, display.availableModes, event.target.value); if (mode) onMode(mode); }}>{resolutions.map((mode) => <option key={resolutionKey(mode)} value={resolutionKey(mode)}>{mode.width} × {mode.height}</option>)}</select><ChevronDown size={16} /></div></label>
+      <label>Refresh rate<div className="select-wrap"><select value={Math.round(display.mode.refreshRate * 100)} disabled={!display.enabled || display.mirrored} onChange={(event) => { const mode = selectRefreshRate(display.mode, display.availableModes, Number(event.target.value)); if (mode) onMode(mode); }}>{refreshRates.map((rate) => <option key={Math.round(rate * 100)} value={Math.round(rate * 100)}>{Number(rate.toFixed(2))} Hz</option>)}</select><ChevronDown size={16} /></div></label>
+      <label>Scaling<div className="select-wrap"><select value={display.scalePercent} disabled={!display.enabled || display.mirrored || scalePercents.length < 2} title={scalePercents.length < 2 ? 'This platform did not report additional scaling choices' : 'Set desktop text and app scaling for this display'} onChange={(event) => onScale(Number(event.target.value))}>{scalePercents.map((scale) => <option key={scale} value={scale}>{scale}%</option>)}</select><ChevronDown size={16} /></div></label>
+      <label>Orientation<div className="select-wrap"><select value={display.rotation} disabled={!display.enabled || display.mirrored} onChange={(event) => onRotation(Number(event.target.value) as 0 | 90 | 180 | 270)}><option value={0}>Landscape</option><option value={90}>Portrait</option><option value={180}>Landscape (flipped)</option><option value={270}>Portrait (flipped)</option></select><ChevronDown size={16} /></div></label>
     </section>
   );
 }

@@ -2,7 +2,7 @@
 
 ## Current release
 
-Monitor Manager 0.1.2 is a functional Electron desktop application. It is not a static prototype.
+Monitor Manager 0.2.0 is a functional Electron desktop application. It is not a static prototype.
 
 The Windows implementation has passed physical hardware tests for:
 
@@ -14,6 +14,7 @@ The Windows implementation has passed physical hardware tests for:
 - per-display HDR switching;
 - per-display desktop scaling;
 - complete profile application;
+- Win+P projection detection and Duplicate-mode recovery;
 - packaged native helper paths;
 - tray profile and version menu behavior.
 
@@ -47,6 +48,9 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 10. Keep the Windows PowerShell helper ASCII-only. Windows PowerShell 5 can corrupt UTF-8 smart punctuation in native status messages.
 11. Refresh native state after every mutation instead of assuming Windows accepted the request.
 12. Preserve the flat color system and profile deletion confirmation.
+13. Treat Duplicate mode as read-only Current setup state. Do not persist mirrored layouts in schema version 1.
+14. Leave Duplicate through `SDC_TOPOLOGY_EXTEND` before applying independent profile paths. Direct clone-to-extend supplied paths returned error 87 on the tested NVIDIA stack.
+15. Do not cache mirrored display scans as last-known independent state.
 
 ## Profile compatibility
 
@@ -61,7 +65,7 @@ Changing schema structure requires a migration in `ProfileStore` and compatibili
 - macOS has not been tested on physical hardware.
 - macOS profile application requires `displayplacer`.
 - macOS percentage scaling and independent HDR switching are read-only.
-- Clone and mirror groups are not represented.
+- Clone and mirror groups cannot be saved or created. External Windows Duplicate mode is detected, labeled, and recoverable through a saved extended profile.
 - Variable refresh rate, color-depth selection, and overscan are not represented.
 - Arrangement Preview displays coordinates but does not support drag-to-arrange editing.
 - Exact disabled-target recovery requires Monitor Manager to have observed the monitor while active.

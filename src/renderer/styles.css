@@ -112,6 +112,8 @@ h1, h2, h3, p { margin-top: 0; }
 .button.destructive:hover { border-color: #e47c88; background: #e47c88; }
 .button:disabled { cursor: default; opacity: .5; }
 .notice { margin-bottom: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(116, 141, 243, .45); border-radius: 6px; background: var(--accent-soft); color: #d4dbfa; font-size: 13px; }
+.notice.warning { border-color: rgba(232, 190, 105, .5); background: rgba(232, 190, 105, .1); color: #eee2c7; }
+.notice.warning > svg { flex: 0 0 auto; color: #e8be69; }
 
 .topology-card { overflow: hidden; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel); }
 .topology-toolbar { height: 48px; padding: 0 17px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); background: var(--panel-2); }
@@ -155,11 +157,13 @@ h1, h2, h3, p { margin-top: 0; }
 .switch > span { width: 16px; height: 16px; display: block; border-radius: 50%; background: #c1c1c9; transition: transform .15s, background .15s; }
 .switch.on { background: var(--accent); }
 .switch.on > span { transform: translateX(16px); background: white; }
+.switch:disabled { cursor: default; opacity: .62; }
 .display-stats { margin: 15px 0 12px; padding: 11px 0; display: grid; grid-template-columns: 1.35fr 1fr .7fr; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .display-stats > span { padding: 0 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .display-stats > span + span { border-left: 1px solid var(--line); }
 .display-stats small { display: block; margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 400; }
 .display-badges { display: flex; gap: 7px; }
+.display-badges .mirrored-badge { min-height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(232, 190, 105, .45); border-radius: 5px; background: rgba(232, 190, 105, .1); color: #e8d6ae; font-size: 11px; }
 .display-badges button { min-height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel-2); color: var(--muted); font-size: 11px; cursor: pointer; }
 .display-badges button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); }
 .display-badges button.active { color: #d9e0ff; border-color: rgba(116, 141, 243, .55); background: var(--accent-soft); }

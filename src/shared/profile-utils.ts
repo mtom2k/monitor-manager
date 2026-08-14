@@ -7,10 +7,8 @@ export function findProfileDisplay(
 ): ProfileDisplay | undefined {
   const normalizedId = displayId.toLocaleLowerCase();
   const normalizedFallback = fallbackSystemId.toLocaleLowerCase();
-  return displays.find((display) =>
-    display.displayId.toLocaleLowerCase() === normalizedId
-    || display.fallbackSystemId.toLocaleLowerCase() === normalizedFallback,
-  );
+  return displays.find((display) => display.displayId.toLocaleLowerCase() === normalizedId)
+    ?? displays.find((display) => display.fallbackSystemId.toLocaleLowerCase() === normalizedFallback);
 }
 
 export function normalizeProfileDisplays(displays: ProfileDisplay[]): ProfileDisplay[] {

@@ -32,6 +32,7 @@ export interface DisplayInfo {
   adapterName?: string;
   connection: ConnectionType;
   enabled: boolean;
+  mirrored: boolean;
   primary: boolean;
   hdrSupported: boolean;
   hdrEnabled: boolean;

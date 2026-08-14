@@ -38,6 +38,7 @@ public static class MonitorManagerNative
     private const uint DISPLAYCONFIG_PATH_ACTIVE = 0x00000001;
     private const uint DISPLAYCONFIG_PATH_MODE_IDX_INVALID = 0xFFFFFFFF;
     private const uint SDC_TOPOLOGY_SUPPLIED = 0x00000010;
+    private const uint SDC_TOPOLOGY_EXTEND = 0x00000004;
     private const uint SDC_USE_SUPPLIED_DISPLAY_CONFIG = 0x00000020;
     private const uint SDC_APPLY = 0x00000080;
     private const uint SDC_SAVE_TO_DATABASE = 0x00000200;
@@ -312,6 +313,7 @@ public static class MonitorManagerNative
         public string adapterName { get; set; }
         public string connection { get; set; }
         public bool enabled { get; set; }
+        public bool mirrored { get; set; }
         public bool primary { get; set; }
         public bool hdrSupported { get; set; }
         public bool hdrEnabled { get; set; }
@@ -355,6 +357,8 @@ public static class MonitorManagerNative
         public bool TargetAvailable;
         public bool HdrSupported;
         public bool HdrEnabled;
+        public bool Mirrored;
+        public string SourceKey;
         public LUID AdapterId;
         public uint TargetId;
     }
@@ -464,7 +468,8 @@ public static class MonitorManagerNative
             List<DisplayDto> refreshed = ListDisplaysInternal();
             foreach (ProfileDisplayDto desired in enabled)
             {
-                DisplayDto resolved = refreshed.FirstOrDefault(d => EqualId(d.id, desired.displayId) || EqualId(d.systemId, desired.fallbackSystemId));
+                DisplayDto resolved = refreshed.FirstOrDefault(d => EqualId(d.id, desired.displayId))
+                    ?? refreshed.FirstOrDefault(d => EqualId(d.systemId, desired.fallbackSystemId));
                 if (resolved == null || !resolved.enabled || !resolved.hdrSupported || resolved.hdrEnabled == desired.hdrEnabled) continue;
                 CcdDescriptor descriptor = ccdDisplays.FirstOrDefault(d => EqualId(BuildStableId(d.DevicePath, resolved.systemId), resolved.id));
                 if (descriptor == null) continue;
@@ -497,7 +502,7 @@ public static class MonitorManagerNative
             DISPLAYCONFIG_TARGET_DEVICE_NAME target = GetTargetName(path);
             if (String.IsNullOrWhiteSpace(source.viewGdiDeviceName)) continue;
             string stableId = BuildStableId(target.monitorDevicePath, source.viewGdiDeviceName);
-            ProfileDisplayDto desired = profile.displays.FirstOrDefault(d => EqualId(d.displayId, stableId) || EqualId(d.fallbackSystemId, source.viewGdiDeviceName));
+            ProfileDisplayDto desired = FindDesiredDisplay(profile.displays, stableId, source.viewGdiDeviceName, false);
             if (desired == null) continue;
             candidates.Add(new PathCandidate
             {
@@ -531,6 +536,22 @@ public static class MonitorManagerNative
 
         HashSet<string> currentActive = new HashSet<string>(candidates.Where(c => c.Active).Select(c => c.StableId), StringComparer.OrdinalIgnoreCase);
         HashSet<string> requestedActive = new HashSet<string>(selected.Select(c => c.StableId), StringComparer.OrdinalIgnoreCase);
+        bool cloneActive = allPaths
+            .Where(path => (path.flags & DISPLAYCONFIG_PATH_ACTIVE) != 0)
+            .GroupBy(path => SourceKey(path), StringComparer.OrdinalIgnoreCase)
+            .Any(group => group.Select(path => TargetKey(path)).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1);
+        if (cloneActive)
+        {
+            int extendResult = SetDisplayConfig(0, null, 0, null, SDC_APPLY | SDC_TOPOLOGY_EXTEND);
+            if (extendResult != ERROR_SUCCESS)
+            {
+                error = "Windows could not leave Duplicate mode (error " + extendResult + "). Choose Extend in Win+P and try again.";
+                return false;
+            }
+            warnings.Add("Windows Duplicate mode was replaced with an extended layout.");
+            Thread.Sleep(1000);
+            return ApplyCcdProfile(profile, originX, originY, warnings, out error);
+        }
         bool topologyChanged = !currentActive.SetEquals(requestedActive);
         if (topologyChanged)
         {
@@ -565,7 +586,7 @@ public static class MonitorManagerNative
             DISPLAYCONFIG_SOURCE_DEVICE_NAME source = GetSourceName(path);
             DISPLAYCONFIG_TARGET_DEVICE_NAME target = GetTargetName(path);
             string stableId = BuildStableId(target.monitorDevicePath, source.viewGdiDeviceName);
-            ProfileDisplayDto desired = profile.displays.FirstOrDefault(d => d.enabled && (EqualId(d.displayId, stableId) || EqualId(d.fallbackSystemId, source.viewGdiDeviceName)));
+            ProfileDisplayDto desired = FindDesiredDisplay(profile.displays, stableId, source.viewGdiDeviceName, true);
             if (desired == null || desired.mode == null || desired.bounds == null) continue;
             if (path.sourceInfo.modeInfoIdx == DISPLAYCONFIG_PATH_MODE_IDX_INVALID || path.sourceInfo.modeInfoIdx >= activeModes.Length)
             {
@@ -673,6 +694,18 @@ public static class MonitorManagerNative
         return path.sourceInfo.adapterId.HighPart + ":" + path.sourceInfo.adapterId.LowPart + ":" + path.sourceInfo.id;
     }
 
+    private static string TargetKey(DISPLAYCONFIG_PATH_INFO path)
+    {
+        return path.targetInfo.adapterId.HighPart + ":" + path.targetInfo.adapterId.LowPart + ":" + path.targetInfo.id;
+    }
+
+    private static ProfileDisplayDto FindDesiredDisplay(IEnumerable<ProfileDisplayDto> displays, string stableId, string fallbackSystemId, bool enabledOnly)
+    {
+        IEnumerable<ProfileDisplayDto> candidates = enabledOnly ? displays.Where(d => d.enabled) : displays;
+        return candidates.FirstOrDefault(d => EqualId(d.displayId, stableId))
+            ?? candidates.FirstOrDefault(d => EqualId(d.fallbackSystemId, fallbackSystemId));
+    }
+
     private static List<DisplayDto> ListDisplaysInternal()
     {
         List<CcdDescriptor> ccd = GetCcdDescriptors();
@@ -732,6 +765,7 @@ public static class MonitorManagerNative
                 adapterName = adapter.DeviceString,
                 connection = descriptor != null ? descriptor.Connection : "Unknown",
                 enabled = enabled,
+                mirrored = descriptor != null && descriptor.Mirrored,
                 primary = (adapter.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) != 0,
                 hdrSupported = descriptor != null && descriptor.HdrSupported,
                 hdrEnabled = descriptor != null && descriptor.HdrEnabled,
@@ -747,8 +781,25 @@ public static class MonitorManagerNative
             .Where(d => !String.IsNullOrWhiteSpace(d.DevicePath) && d.TargetAvailable)
             .GroupBy(d => BuildStableId(d.DevicePath, d.GdiName), StringComparer.OrdinalIgnoreCase))
         {
-            if (result.Any(d => EqualId(d.id, targetGroup.Key))) continue;
             CcdDescriptor descriptor = targetGroup.OrderByDescending(d => d.Active).ThenByDescending(d => d.TargetAvailable).First();
+            DisplayDto existingTarget = result.FirstOrDefault(d => EqualId(d.id, targetGroup.Key));
+            if (existingTarget != null && (existingTarget.enabled || !descriptor.Active)) continue;
+            if (existingTarget != null) result.Remove(existingTarget);
+            DEVMODE current = CreateDevMode();
+            bool hasMode = descriptor.Active && EnumDisplaySettingsEx(descriptor.GdiName, ENUM_CURRENT_SETTINGS, ref current, 0);
+            if (!hasMode && descriptor.Active) hasMode = EnumDisplaySettingsEx(descriptor.GdiName, ENUM_REGISTRY_SETTINGS, ref current, 0);
+            ModeDto activeMode = new ModeDto
+            {
+                width = hasMode ? (int)current.dmPelsWidth : 0,
+                height = hasMode ? (int)current.dmPelsHeight : 0,
+                refreshRate = hasMode ? current.dmDisplayFrequency : 0,
+                bitDepth = hasMode ? (int)current.dmBitsPerPel : 0,
+                interlaced = hasMode && (current.dmDisplayFlags & 0x2) != 0
+            };
+            int scale;
+            if (!scales.TryGetValue(descriptor.GdiName, out scale)) scale = 100;
+            List<int> availableScales;
+            if (!scaleOptions.TryGetValue(descriptor.GdiName, out availableScales)) availableScales = new List<int> { scale };
             result.Add(new DisplayDto
             {
                 id = targetGroup.Key,
@@ -756,16 +807,17 @@ public static class MonitorManagerNative
                 name = String.IsNullOrWhiteSpace(descriptor.FriendlyName) ? "Inactive display" : descriptor.FriendlyName.Trim(),
                 adapterName = "",
                 connection = descriptor.Connection,
-                enabled = false,
+                enabled = descriptor.Active && hasMode,
+                mirrored = descriptor.Active && descriptor.Mirrored,
                 primary = false,
-                hdrSupported = false,
-                hdrEnabled = false,
-                bounds = new BoundsDto { x = 0, y = 0, width = 0, height = 0 },
-                mode = new ModeDto { width = 0, height = 0, refreshRate = 0, bitDepth = 0, interlaced = false },
-                rotation = 0,
-                scalePercent = 100,
-                availableScalePercents = new List<int>(),
-                availableModes = new List<ModeDto>()
+                hdrSupported = descriptor.Active && descriptor.HdrSupported,
+                hdrEnabled = descriptor.Active && descriptor.HdrEnabled,
+                bounds = new BoundsDto { x = hasMode ? current.dmPosition.x : 0, y = hasMode ? current.dmPosition.y : 0, width = activeMode.width, height = activeMode.height },
+                mode = activeMode,
+                rotation = OrientationToRotation(hasMode ? current.dmDisplayOrientation : 0),
+                scalePercent = scale,
+                availableScalePercents = descriptor.Active ? availableScales : new List<int>(),
+                availableModes = descriptor.Active ? EnumerateModes(descriptor.GdiName) : new List<ModeDto>()
             });
         }
         result = result
@@ -828,6 +880,7 @@ public static class MonitorManagerNative
                 Connection = ConnectionName(path.targetInfo.outputTechnology),
                 Active = (path.flags & DISPLAYCONFIG_PATH_ACTIVE) != 0,
                 TargetAvailable = path.targetInfo.targetAvailable,
+                SourceKey = SourceKey(path),
                 AdapterId = path.targetInfo.adapterId,
                 TargetId = path.targetInfo.id
             };
@@ -845,6 +898,11 @@ public static class MonitorManagerNative
                 }
             }
             result.Add(descriptor);
+        }
+        foreach (IGrouping<string, CcdDescriptor> sourceGroup in result.Where(d => d.Active).GroupBy(d => d.SourceKey, StringComparer.OrdinalIgnoreCase))
+        {
+            if (sourceGroup.Count() < 2) continue;
+            foreach (CcdDescriptor descriptor in sourceGroup) descriptor.Mirrored = true;
         }
         return result;
     }
@@ -911,7 +969,7 @@ public static class MonitorManagerNative
             DISPLAYCONFIG_SOURCE_DEVICE_NAME source = GetSourceName(path);
             DISPLAYCONFIG_TARGET_DEVICE_NAME target = GetTargetName(path);
             string stableId = BuildStableId(target.monitorDevicePath, source.viewGdiDeviceName);
-            ProfileDisplayDto desired = profile.displays.FirstOrDefault(d => d.enabled && (EqualId(d.displayId, stableId) || EqualId(d.fallbackSystemId, source.viewGdiDeviceName)));
+            ProfileDisplayDto desired = FindDesiredDisplay(profile.displays, stableId, source.viewGdiDeviceName, true);
             if (desired == null || desired.scalePercent <= 0) continue;
             int currentScale;
             if (!currentScales.TryGetValue(source.viewGdiDeviceName, out currentScale)) currentScale = 100;

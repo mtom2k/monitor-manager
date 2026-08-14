@@ -9,6 +9,7 @@ const activeDisplay: DisplayInfo = {
   adapterName: 'Test adapter',
   connection: 'DisplayPort',
   enabled: true,
+  mirrored: false,
   primary: false,
   hdrSupported: true,
   hdrEnabled: false,
@@ -27,6 +28,7 @@ describe('known display state hydration', () => {
       systemId: '',
       adapterName: '',
       enabled: false,
+      mirrored: false,
       bounds: { x: 0, y: 0, width: 0, height: 0 },
       mode: { width: 0, height: 0, refreshRate: 0 },
       rotation: 0,
@@ -39,6 +41,7 @@ describe('known display state hydration', () => {
 
     expect(result.displays[0]).toMatchObject({
       enabled: false,
+      mirrored: false,
       primary: false,
       systemId: activeDisplay.systemId,
       bounds: activeDisplay.bounds,
@@ -57,6 +60,38 @@ describe('known display state hydration', () => {
 
     expect(result.knownDisplays).toHaveLength(1);
     expect(result.knownDisplays[0].mode.refreshRate).toBe(120);
+  });
+
+  it('prefers a stable target match when mirrored targets share a source', () => {
+    const first = { ...activeDisplay, id: 'win:monitor-a', systemId: '\\\\.\\DISPLAY1', name: 'First' };
+    const second = { ...activeDisplay, id: 'win:monitor-b', systemId: '\\\\.\\DISPLAY1', name: 'Second' };
+    const inactiveSecond = {
+      ...second,
+      enabled: false,
+      bounds: { x: 0, y: 0, width: 0, height: 0 },
+      mode: { width: 0, height: 0, refreshRate: 0 },
+      availableModes: [],
+    } satisfies DisplayInfo;
+
+    const result = hydrateKnownDisplayState([inactiveSecond], [first, second]);
+
+    expect(result.displays[0].id).toBe(second.id);
+    expect(result.displays[0].name).toBe(second.name);
+  });
+
+  it('does not replace last-known independent modes with a temporary mirrored mode', () => {
+    const mirrored = {
+      ...activeDisplay,
+      mirrored: true,
+      bounds: { x: 0, y: 0, width: 3840, height: 2160 },
+      mode: { width: 3840, height: 2160, refreshRate: 60 },
+      rotation: 0 as const,
+    } satisfies DisplayInfo;
+
+    const result = hydrateKnownDisplayState([mirrored], [activeDisplay]);
+
+    expect(result.knownDisplays[0].mode).toEqual(activeDisplay.mode);
+    expect(result.knownDisplays[0].rotation).toBe(90);
   });
 
   it('leaves a never-seen disabled target in automatic recovery mode', () => {

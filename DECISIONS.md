@@ -101,3 +101,13 @@ This file records decisions that materially affect maintenance, compatibility, o
 **Decision:** Keep disabled targets in Current setup, provide direct Apply changes behavior, and preserve cached mode information when Windows omits inactive source details.
 
 **Consequences:** Users can restore a disabled display from the same application or apply a saved profile that enables it. Physically disconnected displays still require reconnection.
+
+## ADR-012: Treat Windows Duplicate mode as external read-only state
+
+**Status:** Accepted after hardware testing
+
+**Context:** Win+P Duplicate maps two physical targets to one CCD source. The current profile schema stores independent position, mode, scale, rotation, and primary state per monitor, so a mirrored group cannot be represented accurately. The tested NVIDIA stack also rejected a direct supplied-path conversion from clone to extend with `ERROR_INVALID_PARAMETER`.
+
+**Decision:** Detect active targets that share a source, expose both physical monitors as mirrored, and block edits or profile capture for that Current setup. Applying a saved profile first asks Windows for its persisted Extend topology, then applies the exact Monitor Manager profile.
+
+**Consequences:** Win+P and Monitor Manager can coexist without silently saving a false topology. Duplicate layouts cannot be created or stored by Monitor Manager in schema version 1. A saved independent profile provides a tested one-click route out of Duplicate mode.

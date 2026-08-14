@@ -1,6 +1,6 @@
 # 🖥️ Monitor Manager
 
-[![Version](https://img.shields.io/badge/version-0.1.2-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.1.2)
+[![Version](https://img.shields.io/badge/version-0.2.0-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.2.0)
 [![License](https://img.shields.io/badge/license-MIT-748df3)](LICENSE)
 [![CI](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml)
 
@@ -15,6 +15,7 @@ Monitor Manager is a tray application for switching complete multi-monitor setup
 - Store resolution, refresh rate, scaling, orientation, position, primary status, and HDR preference per monitor and per profile.
 - Change Windows desktop scaling with the values supported by each display.
 - Restore the last known mode when a disabled Windows monitor is re-enabled.
+- Detect Windows Win+P projection changes and safely recover from Duplicate mode by applying a saved profile.
 - Identify connected displays with numbered overlays.
 - Start automatically at login.
 - Use the supplied Monitor Manager icon in the window, tray, and packaged application.
@@ -45,6 +46,12 @@ macOS source builds are available, but the macOS adapter still requires hardware
 4. Apply the profile from Monitor Manager or the tray menu.
 
 To restore a monitor disabled by Monitor Manager, open **Current setup**, enable that monitor, and choose **Apply changes**. A physically disconnected monitor must be reconnected before Windows can activate it.
+
+## Windows Win+P behavior
+
+**PC screen only**, **Second screen only**, and **Extend** are compatible with Monitor Manager. The app refreshes when Windows changes the active display topology, keeps disabled targets available, and can restore them through a saved profile.
+
+**Duplicate** uses one shared Windows source for multiple physical monitors. Monitor Manager detects and labels that state, but does not save or edit mirrored layouts. Choose **Extend** in Win+P, or apply a saved Monitor Manager profile to return to independent displays.
 
 ## Platform support
 

@@ -14,6 +14,7 @@ const display: DisplayInfo = {
   name: 'Test display',
   connection: 'DisplayPort',
   enabled: true,
+  mirrored: false,
   primary: true,
   hdrSupported: true,
   hdrEnabled: false,
@@ -56,7 +57,7 @@ const snapshot: AppSnapshot = {
     notes: [],
   },
   startupEnabled: false,
-  appVersion: '0.1.2',
+  appVersion: '0.2.0',
 };
 
 function buttonWithText(text: string): HTMLButtonElement {
@@ -127,6 +128,53 @@ describe('profile signal persistence', () => {
     expect(saved.scalePercent).toBe(125);
     expect(restored.mode).toEqual(saved.mode);
     expect(restored.scalePercent).toBe(125);
+    expect(restored.mirrored).toBe(false);
+  });
+});
+
+describe('Windows projection compatibility', () => {
+  it('detects Duplicate mode and prevents saving or editing the mirrored current setup', async () => {
+    const mirroredDisplays: DisplayInfo[] = [
+      { ...display, mirrored: true },
+      {
+        ...display,
+        id: 'display-2',
+        name: 'Mirrored display',
+        mirrored: true,
+        primary: false,
+      },
+    ];
+    const noopListener = vi.fn(() => () => undefined);
+    window.monitorManager = {
+      getSnapshot: vi.fn(async () => ({ ...snapshot, displays: mirroredDisplays, profiles: [] })),
+      refreshDisplays: vi.fn(async () => mirroredDisplays),
+      saveProfile: vi.fn(async () => []),
+      deleteProfile: vi.fn(),
+      applyProfile: vi.fn(),
+      applyConfiguration: vi.fn(),
+      setHdr: vi.fn(),
+      identifyDisplays: vi.fn(),
+      setStartup: vi.fn(async () => false),
+      openExternal: vi.fn(),
+      onDisplaysChanged: noopListener,
+      onProfileApplied: noopListener,
+    } satisfies MonitorManagerApi;
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(document.body.textContent).toContain('Windows Duplicate mode is active.');
+    expect(document.querySelectorAll('.mirrored-badge')).toHaveLength(2);
+    expect(buttonWithText('Save as profile').disabled).toBe(true);
+    expect(buttonWithText('Apply changes').disabled).toBe(true);
+    expect(document.querySelectorAll<HTMLButtonElement>('.display-card .switch')[0].disabled).toBe(true);
+
+    act(() => root.unmount());
   });
 });
 
