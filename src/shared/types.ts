@@ -104,6 +104,7 @@ export interface MonitorManagerApi {
   applyConfiguration(configuration: SaveProfileInput): Promise<ApplyResult>;
   setHdr(displayId: string, enabled: boolean): Promise<ApplyResult>;
   identifyDisplays(): Promise<void>;
+  openDisplaySettings(): Promise<void>;
   setStartup(enabled: boolean): Promise<boolean>;
   openExternal(url: string): Promise<void>;
   onDisplaysChanged(callback: (displays: DisplayInfo[]) => void): () => void;
@@ -119,6 +120,7 @@ export const IPC = {
   applyConfiguration: 'monitor-manager:apply-configuration',
   setHdr: 'monitor-manager:set-hdr',
   identifyDisplays: 'monitor-manager:identify-displays',
+  openDisplaySettings: 'monitor-manager:open-display-settings',
   setStartup: 'monitor-manager:set-startup',
   openExternal: 'monitor-manager:open-external',
   displaysChanged: 'monitor-manager:displays-changed',

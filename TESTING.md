@@ -11,7 +11,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current suite contains 20 tests across 6 files. Coverage includes:
+The current suite contains 24 tests across 7 files. Coverage includes:
 
 - tray version-label formatting;
 - profile deletion confirmation;
@@ -27,6 +27,9 @@ The current suite contains 20 tests across 6 files. Coverage includes:
 - Windows PowerShell helper encoding safety.
 - Duplicate-mode UI safeguards.
 - preservation of last-known independent modes during Duplicate mode.
+- Windows and macOS native display-settings targets;
+- unsupported-platform settings behavior;
+- Display settings toolbar wiring.
 
 ## Native Windows discovery
 
@@ -70,8 +73,10 @@ Environment:
 | Win+P PC screen only | Pass, one active and one recoverable inactive target |
 | Win+P Second screen only | Pass, one active and one recoverable inactive target |
 | Win+P Extend | Pass, exact baseline retained |
+| Windows native Display settings launch | Pass, packaged v0.3.0 opened System > Display |
+| macOS Displays settings targets | Pass, automated target and fallback validation; physical hardware pending |
 | Packaged native helper path | Pass |
-| Packaged tray version row | Pass, Version 0.2.0 directly above Quit |
+| Packaged tray version row | Pass, Version 0.3.0 directly above Quit |
 | Main interface visual review | Pass |
 | Signal controls visual review | Pass |
 | Settings visual review | Pass |
@@ -85,18 +90,11 @@ The final hardware state was restored after every topology or scaling test:
 
 ## Release artifacts
 
-Monitor Manager 0.2.0 SHA-256 hashes:
+Monitor Manager 0.3.0 SHA-256 hashes:
 
 ```text
-portable  DD19138EDA07CA598715172B1FF8CA2FD2A4C007A9C12F594B3E2BFAE577BEBC
-setup     B2AE83D8225B1C7D053A53469A0A1635E2431E00E2B1D0414CDCEF605AF108B6
-```
-
-Monitor Manager 0.1.2 SHA-256 hashes:
-
-```text
-portable  F3B9A59C51154553C302EF9E8A7A971BBA4EED1770F1E279FA2BDDCA8987CA22
-setup     FBCBC980B7B9807181C4B828C46840B335A6757214A44379BBBBEDDFB7FAF1F4
+portable  B5CF28568A224809E12EEF9FA2E6D345E790E6BBFC766E84FCBFC29B8611263C
+setup     6C11C1EA37EBAF4819CBF1CFF4E935E93E71ACC8D6F0A9DD0638137D52FF1AC7
 ```
 
 ## Visual smoke capture
@@ -114,7 +112,7 @@ The packaged tray menu can be serialized with:
 
 ```powershell
 $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
-& '.\release\Monitor Manager-0.2.0-x64-portable.exe'
+& '.\release\Monitor Manager-0.3.0-x64-portable.exe'
 ```
 
 ## Manual release checklist
@@ -128,7 +126,10 @@ $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
 - [ ] Enter Duplicate with Win+P and confirm both physical monitors are labeled Mirrored by Windows.
 - [ ] Confirm Duplicate Current setup cannot be saved or edited.
 - [ ] Apply a saved extended profile from Duplicate and confirm independent modes are restored.
-- [ ] Confirm Version 0.2.0 appears immediately above Quit Monitor Manager.
+- [ ] Confirm Version 0.3.0 appears immediately above Quit Monitor Manager.
+- [ ] Open native Display settings from the main toolbar and confirm the correct operating-system page appears.
+- [ ] Change resolution, refresh rate, scale, or arrangement in native settings, return to Monitor Manager, and confirm Current setup refreshes.
+- [ ] Apply a Monitor Manager change while native settings is open and confirm the operating-system panel reflects the accepted state.
 - [ ] Confirm closing the window leaves the tray process running.
 - [ ] Confirm Quit Monitor Manager exits the process.
 - [ ] Confirm Identify overlays appear on every active monitor.

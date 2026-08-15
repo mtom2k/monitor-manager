@@ -39,6 +39,7 @@ The renderer has no direct Node.js access. Electron context isolation is enabled
 - the dynamic profile menu and version label;
 - monitor identification overlays;
 - display-change event debouncing;
+- native display-settings launching and focus-based refresh;
 - IPC validation;
 - start-at-login settings;
 - platform adapter selection.
@@ -125,6 +126,10 @@ When a profile changes the active monitor set, application occurs in this order:
 ## Windows projection compatibility
 
 Monitor Manager and Win+P both modify the same CCD state, so neither owns the display configuration exclusively. Electron display-added, display-removed, and display-metrics-changed events trigger a debounced native refresh after an external Windows change.
+
+The main toolbar can launch the native settings panel through a dedicated IPC method. Windows uses the documented `ms-settings:display` URI. macOS tries the current Displays settings deep link, the legacy Displays preference link, and the legacy preference-pane path in that order. Targets are hardcoded in the main process and cannot be supplied by renderer input.
+
+Monitor Manager also refreshes native display state whenever its window regains focus. This covers changes such as refresh rate that may not produce an Electron display-metrics event. Draft Current setup state follows the accepted operating-system state; saved profiles remain unchanged until the user edits or applies them.
 
 | Win+P topology | Behavior |
 | --- | --- |

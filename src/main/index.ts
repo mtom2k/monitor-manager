@@ -14,6 +14,7 @@ import { writeFile } from 'node:fs/promises';
 import type { DisplayInfo, SaveProfileInput } from '../shared/types';
 import { IPC } from '../shared/types';
 import { formatVersionLabel } from '../shared/version-utils';
+import { systemDisplaySettingsTargets } from '../shared/system-settings-utils';
 import type { DisplayAdapter } from './platform/display-adapter';
 import { MacOsDisplayAdapter } from './platform/macos-adapter';
 import { UnsupportedDisplayAdapter } from './platform/unsupported-adapter';
@@ -56,6 +57,33 @@ function showMainWindow(): void {
   }
   mainWindow?.show();
   mainWindow?.focus();
+}
+
+function scheduleDisplayRefresh(): void {
+  clearTimeout(displayRefreshTimer);
+  displayRefreshTimer = setTimeout(() => void refreshDisplays(true), 700);
+}
+
+async function openDisplaySettings(): Promise<void> {
+  const platform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'unsupported';
+  const targets = systemDisplaySettingsTargets(platform);
+  if (!targets.length) throw new Error('Native display settings are not available on this platform.');
+
+  let lastError: unknown;
+  for (const target of targets) {
+    try {
+      if (target.kind === 'external') {
+        await shell.openExternal(target.value);
+      } else {
+        const error = await shell.openPath(target.value);
+        if (error) throw new Error(error);
+      }
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(`Could not open native display settings: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 function createMainWindow(): void {
@@ -124,6 +152,7 @@ function createMainWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+  mainWindow.on('focus', scheduleDisplayRefresh);
 }
 
 async function rebuildTrayMenu(): Promise<void> {
@@ -276,6 +305,7 @@ function registerIpc(): void {
     return result;
   });
   ipcMain.handle(IPC.identifyDisplays, () => identifyDisplays());
+  ipcMain.handle(IPC.openDisplaySettings, () => openDisplaySettings());
   ipcMain.handle(IPC.setStartup, (_event, enabled: boolean) => {
     app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: true });
     return app.getLoginItemSettings().openAtLogin;
@@ -300,13 +330,9 @@ app.whenReady().then(() => {
   createTray();
   scheduleTraySmokeResult();
 
-  const scheduleRefresh = () => {
-    clearTimeout(displayRefreshTimer);
-    displayRefreshTimer = setTimeout(() => void refreshDisplays(true), 700);
-  };
-  screen.on('display-added', scheduleRefresh);
-  screen.on('display-removed', scheduleRefresh);
-  screen.on('display-metrics-changed', scheduleRefresh);
+  screen.on('display-added', scheduleDisplayRefresh);
+  screen.on('display-removed', scheduleDisplayRefresh);
+  screen.on('display-metrics-changed', scheduleDisplayRefresh);
 });
 
 app.on('activate', showMainWindow);

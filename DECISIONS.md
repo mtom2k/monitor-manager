@@ -111,3 +111,13 @@ This file records decisions that materially affect maintenance, compatibility, o
 **Decision:** Detect active targets that share a source, expose both physical monitors as mirrored, and block edits or profile capture for that Current setup. Applying a saved profile first asks Windows for its persisted Extend topology, then applies the exact Monitor Manager profile.
 
 **Consequences:** Win+P and Monitor Manager can coexist without silently saving a false topology. Duplicate layouts cannot be created or stored by Monitor Manager in schema version 1. A saved independent profile provides a tested one-click route out of Duplicate mode.
+
+## ADR-013: Open native display settings through dedicated IPC
+
+**Status:** Accepted
+
+**Context:** Users may need operating-system controls that Monitor Manager does not expose, including platform-specific alignment, color, brightness, and advanced display options. The existing generic external-link IPC intentionally permits only HTTP and HTTPS.
+
+**Decision:** Add a parameterless `openDisplaySettings` IPC method with hardcoded platform targets. Use `ms-settings:display` on Windows and current-to-legacy Displays settings fallbacks on macOS. Refresh display state when the Monitor Manager window regains focus.
+
+**Consequences:** The renderer cannot launch arbitrary system protocols. Native changes appear in Current setup after an operating-system display event or focus return, while Monitor Manager changes remain visible in the native panel because both operate on system display state.

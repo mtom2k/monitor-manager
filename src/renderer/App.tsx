@@ -6,6 +6,7 @@ import {
   Copy,
   CopyPlus,
   Eye,
+  ExternalLink,
   Info,
   LoaderCircle,
   Menu,
@@ -279,6 +280,15 @@ export function App() {
     }
   };
 
+  const openDisplaySettings = async () => {
+    try {
+      await window.monitorManager.openDisplaySettings();
+      showToast({ kind: 'info', message: `Opened ${snapshot?.capabilities.platform === 'macos' ? 'macOS Displays' : 'Windows display'} settings.` });
+    } catch (error) {
+      showToast({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
   const deleteSelected = async () => {
     if (!deleteDialog) return;
     setWorking(true);
@@ -359,6 +369,7 @@ export function App() {
           {!settingsOpen && <div className="heading-actions">
             {selectedProfile && <button className="icon-button danger" title="Delete this profile" onClick={() => setDeleteDialog(selectedProfile)}><Trash2 size={17} /></button>}
             {selectedProfile && <button className="button secondary" onClick={() => setNameDialog({ mode: 'rename', value: selectedProfile.name })}><Menu size={16} />Rename</button>}
+            <button className="button secondary" title={snapshot?.capabilities.platform === 'macos' ? 'Open macOS Displays settings' : 'Open Windows display settings'} onClick={() => void openDisplaySettings()} disabled={snapshot?.capabilities.platform === 'unsupported'}><ExternalLink size={17} />Display settings</button>
             <button className="button secondary" title="Show a number on every connected monitor" onClick={() => void window.monitorManager.identifyDisplays()}><Eye size={17} />Identify</button>
             <button className="icon-button" title="Refresh connected displays" onClick={refresh} disabled={working}><RefreshCw size={17} className={working ? 'spin' : ''} /></button>
           </div>}

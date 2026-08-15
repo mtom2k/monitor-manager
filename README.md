@@ -1,6 +1,6 @@
 # 🖥️ Monitor Manager
 
-[![Version](https://img.shields.io/badge/version-0.2.0-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.2.0)
+[![Version](https://img.shields.io/badge/version-0.3.0-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.3.0)
 [![License](https://img.shields.io/badge/license-MIT-748df3)](LICENSE)
 [![CI](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml)
 
@@ -16,6 +16,7 @@ Monitor Manager is a tray application for switching complete multi-monitor setup
 - Change Windows desktop scaling with the values supported by each display.
 - Restore the last known mode when a disabled Windows monitor is re-enabled.
 - Detect Windows Win+P projection changes and safely recover from Duplicate mode by applying a saved profile.
+- Open Windows Display settings or macOS Displays settings directly from the main toolbar.
 - Identify connected displays with numbered overlays.
 - Start automatically at login.
 - Use the supplied Monitor Manager icon in the window, tray, and packaged application.
@@ -52,6 +53,8 @@ To restore a monitor disabled by Monitor Manager, open **Current setup**, enable
 **PC screen only**, **Second screen only**, and **Extend** are compatible with Monitor Manager. The app refreshes when Windows changes the active display topology, keeps disabled targets available, and can restore them through a saved profile.
 
 **Duplicate** uses one shared Windows source for multiple physical monitors. Monitor Manager detects and labels that state, but does not save or edit mirrored layouts. Choose **Extend** in Win+P, or apply a saved Monitor Manager profile to return to independent displays.
+
+Changes applied in the operating system are refreshed through display events and whenever Monitor Manager regains focus. Changes applied by Monitor Manager use the operating system display configuration, so the native settings panel reflects the accepted configuration too.
 
 ## Platform support
 

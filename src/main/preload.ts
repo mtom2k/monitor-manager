@@ -11,6 +11,7 @@ const api: MonitorManagerApi = {
   applyConfiguration: (configuration) => ipcRenderer.invoke(IPC.applyConfiguration, configuration),
   setHdr: (displayId, enabled) => ipcRenderer.invoke(IPC.setHdr, displayId, enabled),
   identifyDisplays: () => ipcRenderer.invoke(IPC.identifyDisplays),
+  openDisplaySettings: () => ipcRenderer.invoke(IPC.openDisplaySettings),
   setStartup: (enabled) => ipcRenderer.invoke(IPC.setStartup, enabled),
   openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
   onDisplaysChanged: (callback) => {

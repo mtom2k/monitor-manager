@@ -57,7 +57,7 @@ const snapshot: AppSnapshot = {
     notes: [],
   },
   startupEnabled: false,
-  appVersion: '0.2.0',
+  appVersion: '0.3.0',
 };
 
 function buttonWithText(text: string): HTMLButtonElement {
@@ -84,6 +84,7 @@ describe('profile deletion', () => {
       applyConfiguration: vi.fn(),
       setHdr: vi.fn(),
       identifyDisplays: vi.fn(),
+      openDisplaySettings: vi.fn(),
       setStartup: vi.fn(async () => false),
       openExternal: vi.fn(),
       onDisplaysChanged: noopListener,
@@ -132,6 +133,41 @@ describe('profile signal persistence', () => {
   });
 });
 
+describe('system display settings', () => {
+  it('opens the operating system display settings from the main toolbar', async () => {
+    const openDisplaySettings = vi.fn(async () => undefined);
+    const noopListener = vi.fn(() => () => undefined);
+    window.monitorManager = {
+      getSnapshot: vi.fn(async () => snapshot),
+      refreshDisplays: vi.fn(async () => [display]),
+      saveProfile: vi.fn(async () => [profile]),
+      deleteProfile: vi.fn(),
+      applyProfile: vi.fn(),
+      applyConfiguration: vi.fn(),
+      setHdr: vi.fn(),
+      identifyDisplays: vi.fn(),
+      openDisplaySettings,
+      setStartup: vi.fn(async () => false),
+      openExternal: vi.fn(),
+      onDisplaysChanged: noopListener,
+      onProfileApplied: noopListener,
+    } satisfies MonitorManagerApi;
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () => buttonWithText('Display settings').click());
+    expect(openDisplaySettings).toHaveBeenCalledOnce();
+
+    act(() => root.unmount());
+  });
+});
+
 describe('Windows projection compatibility', () => {
   it('detects Duplicate mode and prevents saving or editing the mirrored current setup', async () => {
     const mirroredDisplays: DisplayInfo[] = [
@@ -154,6 +190,7 @@ describe('Windows projection compatibility', () => {
       applyConfiguration: vi.fn(),
       setHdr: vi.fn(),
       identifyDisplays: vi.fn(),
+      openDisplaySettings: vi.fn(),
       setStartup: vi.fn(async () => false),
       openExternal: vi.fn(),
       onDisplaysChanged: noopListener,

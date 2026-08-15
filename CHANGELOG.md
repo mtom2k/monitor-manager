@@ -2,6 +2,22 @@
 
 All notable changes are recorded here.
 
+## 0.3.0 - 2026-08-15
+
+### Added
+
+- A Display settings toolbar button that opens Windows Display settings or macOS Displays settings.
+- Modern and legacy macOS Displays settings launch fallbacks.
+- Focus-based display refresh so refresh-rate-only changes made in native settings are discovered when the user returns to Monitor Manager.
+
+### Changed
+
+- Kept operating-system display changes and Monitor Manager Current setup synchronized through display events and focus refreshes.
+
+### Verified
+
+- Added Windows, macOS, unsupported-platform, and renderer button coverage.
+
 ## 0.2.0 - 2026-08-14
 
 ### Added

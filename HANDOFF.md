@@ -2,7 +2,7 @@
 
 ## Current release
 
-Monitor Manager 0.2.0 is a functional Electron desktop application. It is not a static prototype.
+Monitor Manager 0.3.0 is a functional Electron desktop application. It is not a static prototype.
 
 The Windows implementation has passed physical hardware tests for:
 
@@ -15,6 +15,7 @@ The Windows implementation has passed physical hardware tests for:
 - per-display desktop scaling;
 - complete profile application;
 - Win+P projection detection and Duplicate-mode recovery;
+- native Windows and macOS display-settings launching;
 - packaged native helper paths;
 - tray profile and version menu behavior.
 
@@ -33,6 +34,7 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 - `src/renderer/styles.css`: responsive application styling
 - `src/shared/types.ts`: domain and IPC contracts
 - `src/shared/mode-utils.ts`: resolution and refresh-rate selection logic
+- `src/shared/system-settings-utils.ts`: fixed native settings targets and platform fallback order
 
 ## Invariants
 
@@ -51,6 +53,8 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 13. Treat Duplicate mode as read-only Current setup state. Do not persist mirrored layouts in schema version 1.
 14. Leave Duplicate through `SDC_TOPOLOGY_EXTEND` before applying independent profile paths. Direct clone-to-extend supplied paths returned error 87 on the tested NVIDIA stack.
 15. Do not cache mirrored display scans as last-known independent state.
+16. Keep native settings targets hardcoded behind the parameterless IPC method. Do not allow renderer-supplied system protocols.
+17. Preserve focus-based refresh because refresh-rate-only native changes may not emit an Electron display-metrics event.
 
 ## Profile compatibility
 
