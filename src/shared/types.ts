@@ -27,6 +27,7 @@ export interface DisplayBounds {
 
 export interface DisplayInfo {
   id: string;
+  displayNumber?: number;
   systemId: string;
   name: string;
   adapterName?: string;

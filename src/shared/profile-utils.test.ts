@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findProfileDisplay, normalizeProfileDisplays } from './profile-utils';
+import { findProfileDisplay, normalizeProfileDisplays, resolveDisplayLayout } from './profile-utils';
 import type { ProfileDisplay } from './types';
 
 const makeDisplay = (id: string, enabled = true, primary = false): ProfileDisplay => ({
@@ -48,5 +48,28 @@ describe('profile utilities', () => {
 
   it('rejects a profile that disables every display', () => {
     expect(() => normalizeProfileDisplays([makeDisplay('a', false)])).toThrow(/one monitor/i);
+  });
+
+  it('moves only colliding displays after every valid existing rectangle', () => {
+    const primary = { ...makeDisplay('primary', true, true), bounds: { x: 0, y: 0, width: 3840, height: 2160 }, mode: { width: 3840, height: 2160, refreshRate: 240 } };
+    const portrait = { ...makeDisplay('portrait'), bounds: { x: 3840, y: -900, width: 2160, height: 3840 }, mode: { width: 2160, height: 3840, refreshRate: 144 } };
+    const overlapping = { ...makeDisplay('new'), bounds: { x: 0, y: 0, width: 3440, height: 1440 }, mode: { width: 3440, height: 1440, refreshRate: 144 } };
+
+    const result = resolveDisplayLayout([primary, overlapping, portrait], 'new');
+
+    expect(result.find((display) => display.displayId === 'primary')?.bounds.x).toBe(0);
+    expect(result.find((display) => display.displayId === 'portrait')?.bounds.x).toBe(3840);
+    expect(result.find((display) => display.displayId === 'new')?.bounds.x).toBe(6000);
+  });
+
+  it('lays out an arbitrary number of colliding displays without overlap', () => {
+    const displays = Array.from({ length: 12 }, (_, index) => ({
+      ...makeDisplay(`display-${index}`, true, index === 0),
+      bounds: { x: 0, y: 0, width: 1920, height: 1080 },
+    }));
+
+    const result = resolveDisplayLayout(displays);
+
+    expect(result.map((display) => display.bounds.x)).toEqual(Array.from({ length: 12 }, (_, index) => index * 1920));
   });
 });

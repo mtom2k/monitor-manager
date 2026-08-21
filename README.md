@@ -1,6 +1,6 @@
 # 🖥️ Monitor Manager
 
-[![Version](https://img.shields.io/badge/version-0.3.0-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.3.0)
+[![Version](https://img.shields.io/badge/version-0.3.1-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.3.1)
 [![License](https://img.shields.io/badge/license-MIT-748df3)](LICENSE)
 [![CI](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml)
 
@@ -12,7 +12,9 @@ Monitor Manager is a tray application for switching complete multi-monitor setup
 
 - Enable or disable individual monitors without losing access to them in the app.
 - Save display profiles and switch between them from the window or system tray.
+- Keep monitor numbers stable across restarts and profile switches.
 - Store resolution, refresh rate, scaling, orientation, position, primary status, and HDR preference per monitor and per profile.
+- Handle any display count exposed by the operating system without an application-level fixed limit, with collision-safe placement and a scrollable arrangement preview.
 - Change Windows desktop scaling with the values supported by each display.
 - Restore the last known mode when a disabled Windows monitor is re-enabled.
 - Detect Windows Win+P projection changes and safely recover from Duplicate mode by applying a saved profile.

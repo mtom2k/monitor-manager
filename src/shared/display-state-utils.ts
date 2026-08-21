@@ -5,10 +5,11 @@ function findSameDisplay(displays: DisplayInfo[], target: DisplayInfo): DisplayI
     display.id.localeCompare(target.id, undefined, { sensitivity: 'accent' }) === 0
   ));
   if (stableMatch || !target.systemId) return stableMatch;
-  return displays.find((display) => (
+  const sourceMatches = displays.filter((display) => (
     Boolean(display.systemId) &&
     display.systemId.localeCompare(target.systemId, undefined, { sensitivity: 'accent' }) === 0
   ));
+  return sourceMatches.find((display) => display.name.localeCompare(target.name, undefined, { sensitivity: 'base' }) === 0);
 }
 
 function cloneDisplay(display: DisplayInfo): DisplayInfo {
@@ -19,6 +20,12 @@ function cloneDisplay(display: DisplayInfo): DisplayInfo {
     availableScalePercents: [...(display.availableScalePercents ?? [display.scalePercent])],
     availableModes: display.availableModes.map((mode) => ({ ...mode })),
   };
+}
+
+function validDisplayNumber(display: DisplayInfo): number | undefined {
+  return Number.isInteger(display.displayNumber) && Number(display.displayNumber) > 0
+    ? Number(display.displayNumber)
+    : undefined;
 }
 
 function hasUsableMode(display: DisplayInfo): boolean {
@@ -38,15 +45,38 @@ export function hydrateKnownDisplayState(
   liveDisplays: DisplayInfo[],
   storedDisplays: DisplayInfo[],
 ): HydratedDisplayState {
+  const assignedNumbers = new Map<string, number>();
+  const usedNumbers = new Set<number>();
+  for (const stored of storedDisplays) {
+    const number = validDisplayNumber(stored);
+    if (!number || usedNumbers.has(number)) continue;
+    assignedNumbers.set(stored.id.toLocaleLowerCase(), number);
+    usedNumbers.add(number);
+  }
+  let nextNumber = 1;
+  const numberFor = (display: DisplayInfo): number => {
+    const key = display.id.toLocaleLowerCase();
+    const existing = assignedNumbers.get(key);
+    if (existing) return existing;
+    while (usedNumbers.has(nextNumber)) nextNumber += 1;
+    const assigned = nextNumber;
+    assignedNumbers.set(key, assigned);
+    usedNumbers.add(assigned);
+    nextNumber += 1;
+    return assigned;
+  };
+
   const hydrated = liveDisplays.map((liveDisplay) => {
+    const displayNumber = numberFor(liveDisplay);
     if (liveDisplay.enabled || hasUsableMode(liveDisplay)) return cloneDisplay(liveDisplay);
 
     const stored = findSameDisplay(storedDisplays, liveDisplay);
-    if (!stored) return cloneDisplay(liveDisplay);
+    if (!stored) return { ...cloneDisplay(liveDisplay), displayNumber };
 
     return {
       ...cloneDisplay(stored),
       id: liveDisplay.id,
+      displayNumber,
       systemId: liveDisplay.systemId || stored.systemId,
       name: liveDisplay.name || stored.name,
       adapterName: liveDisplay.adapterName || stored.adapterName,
@@ -55,17 +85,24 @@ export function hydrateKnownDisplayState(
       mirrored: false,
       primary: false,
     };
-  });
+  }).map((display) => ({ ...display, displayNumber: numberFor(display) }));
 
   const knownDisplays = storedDisplays.map(cloneDisplay);
   for (const display of liveDisplays) {
     if (!display.enabled || display.mirrored || !hasUsableMode(display)) continue;
     const existing = findSameDisplay(knownDisplays, display);
     const existingIndex = existing ? knownDisplays.indexOf(existing) : -1;
-    const snapshot = cloneDisplay(display);
+    const snapshot = { ...cloneDisplay(display), displayNumber: numberFor(display) };
     if (existingIndex >= 0) knownDisplays.splice(existingIndex, 1, snapshot);
     else knownDisplays.push(snapshot);
   }
 
+  for (let index = 0; index < knownDisplays.length; index += 1) {
+    const display = knownDisplays[index];
+    knownDisplays[index] = { ...display, displayNumber: numberFor(display) };
+  }
+
+  hydrated.sort((left, right) => numberFor(left) - numberFor(right));
+  knownDisplays.sort((left, right) => numberFor(left) - numberFor(right));
   return { displays: hydrated, knownDisplays };
 }

@@ -100,6 +100,8 @@ After topology changes, Windows can expose active and inactive sources for the s
 
 Stable target matching always runs before source fallback matching. This ordering is required in Duplicate mode because multiple physical targets can share the same GDI source name.
 
+`DisplayStateStore` assigns each stable physical target a persistent positive display number. Live scans are sorted by those stored numbers before reaching the renderer, so Windows enumeration, primary-display, and profile changes do not reorder Connected displays. A newly observed target receives the next unused number.
+
 ## Windows implementation
 
 The main process launches `assets/native/windows-display.ps1` with an execution-policy bypass limited to that helper. The script compiles an in-memory C# P/Invoke type and returns one JSON response.
@@ -122,6 +124,10 @@ When a profile changes the active monitor set, application occurs in this order:
 5. Re-query source identifiers and apply requested desktop scaling.
 6. Apply HDR preferences to active targets.
 7. Refresh native state and return the accepted configuration to the renderer.
+
+The Windows adapter serializes discovery, profile, and HDR helper calls. After each profile application, it compares the accepted native state with every enabled profile target. A mismatch in topology, primary state, resolution, refresh rate, rotation, position, scaling, or HDR triggers another complete pass, up to three attempts. The operation fails explicitly if Windows still does not converge.
+
+Profile normalization rejects overlapping enabled source rectangles. Existing valid coordinates remain untouched; only colliding targets move to the current right edge. The algorithm iterates over the supplied display collection and has no application-level display-count limit. Arrangement Preview uses the same normalization and becomes scrollable when maintaining readable monitor tiles exceeds its viewport.
 
 ## Windows projection compatibility
 

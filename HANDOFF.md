@@ -2,7 +2,7 @@
 
 ## Current release
 
-Monitor Manager 0.3.0 is a functional Electron desktop application. It is not a static prototype.
+Monitor Manager 0.3.1 is a functional Electron desktop application. It is not a static prototype.
 
 The Windows implementation has passed physical hardware tests for:
 
@@ -14,10 +14,15 @@ The Windows implementation has passed physical hardware tests for:
 - per-display HDR switching;
 - per-display desktop scaling;
 - complete profile application;
+- serialized and verified tray profile application;
+- persistent physical-monitor numbering across topology changes;
+- collision-safe three-monitor and arbitrary-count preview layout;
 - Win+P projection detection and Duplicate-mode recovery;
 - native Windows and macOS display-settings launching;
 - packaged native helper paths;
 - tray profile and version menu behavior.
+
+The 2026-08-20 three-monitor regression run reproduced a transient Windows error 87 while returning from the single-monitor Racing Sim profile to Default. Version 0.3.1 retried after topology stabilization and restored AW3225QF and M28U resolution, refresh rate, rotation, scaling, coordinates, primary state, and HDR without another user action. G34WQC A remained connected and disabled as requested.
 
 The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, readable typography, confirmation before profile deletion, and a primary star in Arrangement Preview.
 
@@ -35,6 +40,8 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 - `src/shared/types.ts`: domain and IPC contracts
 - `src/shared/mode-utils.ts`: resolution and refresh-rate selection logic
 - `src/shared/system-settings-utils.ts`: fixed native settings targets and platform fallback order
+- `src/shared/profile-apply-utils.ts`: accepted-state verification for Windows profile convergence
+- `src/shared/profile-utils.ts`: profile matching, primary normalization, and collision-safe layout
 
 ## Invariants
 
@@ -55,6 +62,10 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 15. Do not cache mirrored display scans as last-known independent state.
 16. Keep native settings targets hardcoded behind the parameterless IPC method. Do not allow renderer-supplied system protocols.
 17. Preserve focus-based refresh because refresh-rate-only native changes may not emit an Electron display-metrics event.
+18. Serialize all Windows helper operations. A display-event scan must not overlap a topology mutation.
+19. Treat a Windows profile application as successful only after accepted-state verification passes.
+20. Keep `displayNumber` bound to the stable physical target ID and never derive it from the latest enumeration order.
+21. Preserve valid source rectangles and move only overlapping enabled targets. Do not introduce a fixed display-count limit.
 
 ## Profile compatibility
 

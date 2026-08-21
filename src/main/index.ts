@@ -5,6 +5,7 @@ import {
   Menu,
   nativeImage,
   nativeTheme,
+  Notification,
   screen,
   shell,
   Tray,
@@ -30,6 +31,7 @@ let profileStore: ProfileStore;
 let displayStateStore: DisplayStateStore;
 let isQuitting = false;
 let displayRefreshTimer: NodeJS.Timeout | undefined;
+let profileApplyInProgress = false;
 
 const smokeOutputPath = process.env.MONITOR_MANAGER_SMOKE_CAPTURE ?? process.env.MONITOR_MANAGER_TRAY_SMOKE_RESULT;
 if (smokeOutputPath) {
@@ -161,7 +163,8 @@ async function rebuildTrayMenu(): Promise<void> {
   const profileItems: Electron.MenuItemConstructorOptions[] = profiles.length
     ? profiles.map((profile) => ({
         label: profile.name,
-        click: () => void applyProfile(profile.id),
+        enabled: !profileApplyInProgress,
+        click: () => void applyProfile(profile.id, true),
       }))
     : [{ label: 'No profiles saved', enabled: false }];
 
@@ -172,7 +175,7 @@ async function rebuildTrayMenu(): Promise<void> {
     ...profileItems,
     { type: 'separator' },
     { label: 'Refresh displays', click: () => void refreshDisplays(true) },
-    { label: 'Identify displays', click: () => identifyDisplays() },
+    { label: 'Identify displays', click: () => void identifyDisplays() },
     { type: 'separator' },
     { label: formatVersionLabel(app.getVersion()), enabled: false },
     {
@@ -223,20 +226,42 @@ async function refreshDisplays(broadcast = false): Promise<DisplayInfo[]> {
   return displays;
 }
 
-async function applyProfile(profileId: string) {
+async function applyProfile(profileId: string, fromTray = false) {
+  if (profileApplyInProgress) return { ok: false, message: 'Another display profile is still being applied.' };
   const profile = await profileStore.get(profileId);
   if (!profile) return { ok: false, message: 'That profile no longer exists.' };
-  const result = await adapter.applyProfile(profile);
-  if (result.ok) {
-    mainWindow?.webContents.send(IPC.profileApplied, profileId);
+  profileApplyInProgress = true;
+  await rebuildTrayMenu();
+  try {
+    const result = await adapter.applyProfile(profile);
     result.displays = await refreshDisplays(false);
     mainWindow?.webContents.send(IPC.displaysChanged, result.displays);
+    if (result.ok) {
+      mainWindow?.webContents.send(IPC.profileApplied, profileId);
+    } else if (fromTray && Notification.isSupported()) {
+      new Notification({ title: 'Monitor Manager', body: result.message }).show();
+    }
+    return result;
+  } finally {
+    profileApplyInProgress = false;
+    await rebuildTrayMenu();
   }
-  return result;
 }
 
-function identifyDisplays(): void {
+async function identifyDisplays(): Promise<void> {
+  const activeDisplays = (await refreshDisplays(false)).filter((display) => display.enabled);
+  const used = new Set<string>();
   const overlays = screen.getAllDisplays().map((display, index) => {
+    const labelMatch = activeDisplays.find((candidate) => (
+      !used.has(candidate.id)
+      && Boolean(display.label)
+      && candidate.name.localeCompare(display.label, undefined, { sensitivity: 'base' }) === 0
+    ));
+    const primaryMatch = display.bounds.x === 0 && display.bounds.y === 0
+      ? activeDisplays.find((candidate) => !used.has(candidate.id) && candidate.primary)
+      : undefined;
+    const matched = labelMatch ?? primaryMatch ?? activeDisplays.find((candidate) => !used.has(candidate.id));
+    if (matched) used.add(matched.id);
     const overlay = new BrowserWindow({
       x: display.bounds.x + Math.round(display.bounds.width / 2) - 92,
       y: display.bounds.y + Math.round(display.bounds.height / 2) - 92,
@@ -253,7 +278,7 @@ function identifyDisplays(): void {
     });
     overlay.setIgnoreMouseEvents(true);
     overlay.setAlwaysOnTop(true, 'screen-saver');
-    const number = index + 1;
+    const number = matched?.displayNumber ?? index + 1;
     const html = `<!doctype html><style>*{box-sizing:border-box}body{margin:0;background:transparent;font-family:Segoe UI,-apple-system,sans-serif}.badge{width:176px;height:176px;margin:4px;border:5px solid rgba(255,255,255,.94);border-radius:20px;background:#748df3;color:#111218;display:grid;place-items:center;font-size:86px;font-weight:750}</style><div class="badge">${number}</div>`;
     void overlay.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     return overlay;

@@ -32,7 +32,7 @@ import type {
   DisplayProfile,
   ProfileDisplay,
 } from '../shared/types';
-import { findProfileDisplay, normalizeProfileDisplays } from '../shared/profile-utils';
+import { findProfileDisplay, normalizeProfileDisplays, resolveDisplayLayout } from '../shared/profile-utils';
 import {
   refreshRatesForResolution,
   resolutionKey,
@@ -57,7 +57,7 @@ export const toProfileDisplay = (display: DisplayInfo): ProfileDisplay => ({
 });
 
 export function mergeProfile(displays: DisplayInfo[], profile: DisplayProfile): DisplayInfo[] {
-  return displays.map((display) => {
+  return resolveDisplayLayout(displays.map((display) => {
     const saved = findProfileDisplay(profile.displays, display.id, display.systemId);
     if (!saved) return display;
     return {
@@ -71,11 +71,12 @@ export function mergeProfile(displays: DisplayInfo[], profile: DisplayProfile): 
       rotation: saved.rotation,
       scalePercent: saved.scalePercent ?? display.scalePercent,
     };
-  });
+  }));
 }
 
 function monitorNumber(displays: DisplayInfo[], id: string): number {
-  return displays.findIndex((display) => display.id === id) + 1;
+  const display = displays.find((item) => item.id === id);
+  return display?.displayNumber ?? displays.findIndex((item) => item.id === id) + 1;
 }
 
 export function App() {
@@ -173,7 +174,7 @@ export function App() {
         const replacement = next.find((item) => item.enabled);
         if (replacement) return next.map((item) => ({ ...item, primary: item.id === replacement.id }));
       }
-      return next;
+      return display.enabled ? next : resolveDisplayLayout(next, display.id);
     });
     setDirty(true);
   };
@@ -469,20 +470,25 @@ export function App() {
 }
 
 export function Topology({ displays, selectedId, onSelect }: { displays: DisplayInfo[]; selectedId?: string; onSelect: (id: string) => void }) {
-  const active = displays.filter((display) => display.enabled);
+  const active = useMemo(() => resolveDisplayLayout(displays).filter((display) => display.enabled), [displays]);
   const layout = useMemo(() => {
     if (!active.length) return [];
     const minX = Math.min(...active.map((display) => display.bounds.x));
     const minY = Math.min(...active.map((display) => display.bounds.y));
     const maxX = Math.max(...active.map((display) => display.bounds.x + display.mode.width));
     const maxY = Math.max(...active.map((display) => display.bounds.y + display.mode.height));
-    const scale = Math.min(720 / Math.max(maxX - minX, 1), 170 / Math.max(maxY - minY, 1));
+    const fitScale = Math.min(720 / Math.max(maxX - minX, 1), 170 / Math.max(maxY - minY, 1));
+    const readableScale = Math.max(...active.map((display) => Math.max(
+      104 / Math.max(display.mode.width, 1),
+      64 / Math.max(display.mode.height, 1),
+    )));
+    const scale = Math.max(fitScale, readableScale);
     return active.map((display) => ({
       display,
       left: (display.bounds.x - minX) * scale,
       top: (display.bounds.y - minY) * scale,
-      width: Math.max(display.mode.width * scale, 76),
-      height: Math.max(display.mode.height * scale, 48),
+      width: display.mode.width * scale,
+      height: display.mode.height * scale,
     }));
   }, [active]);
   const width = Math.max(0, ...layout.map((item) => item.left + item.width));

@@ -57,7 +57,7 @@ const snapshot: AppSnapshot = {
     notes: [],
   },
   startupEnabled: false,
-  appVersion: '0.3.0',
+  appVersion: '0.3.1',
 };
 
 function buttonWithText(text: string): HTMLButtonElement {

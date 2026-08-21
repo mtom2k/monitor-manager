@@ -121,3 +121,23 @@ This file records decisions that materially affect maintenance, compatibility, o
 **Decision:** Add a parameterless `openDisplaySettings` IPC method with hardcoded platform targets. Use `ms-settings:display` on Windows and current-to-legacy Displays settings fallbacks on macOS. Refresh display state when the Monitor Manager window regains focus.
 
 **Consequences:** The renderer cannot launch arbitrary system protocols. Native changes appear in Current setup after an operating-system display event or focus return, while Monitor Manager changes remain visible in the native panel because both operate on system display state.
+
+## ADR-014: Serialize and verify Windows profile convergence
+
+**Status:** Accepted after three-monitor hardware investigation
+
+**Context:** A topology-changing tray application could overlap with display-event refreshes, and some display stacks can finish re-enumerating after the first detailed mode pass. A later manual application then appears to fix refresh rate and orientation because topology has stabilized.
+
+**Decision:** Serialize every Windows adapter operation. Disable tray profile entries during application, verify the accepted native state against the complete requested profile, and retry the full application up to three times before reporting failure.
+
+**Consequences:** One tray selection is transactional from the user's perspective. Display refreshes wait behind mutations, rapid repeated selections cannot create concurrent CCD commits, and a partial Windows result is never reported as success.
+
+## ADR-015: Persist physical monitor numbers and normalize collisions
+
+**Status:** Accepted
+
+**Context:** Windows enumeration order changes when primary status and active topology change. Deriving display numbers from array indexes caused numbers and Connected displays cards to move. Newly enabled targets can also carry missing or stale zero-origin bounds, producing overlapping preview tiles.
+
+**Decision:** Assign persistent numbers to stable physical target IDs in the known-display cache. Sort hydrated scans by that number. Preserve valid profile rectangles and place only colliding enabled targets at the current right edge. Allow the preview to scroll instead of shrinking monitor tiles below a readable size.
+
+**Consequences:** Numbers remain stable across restarts and profile changes. New displays append predictably, arbitrary display collections are handled without a fixed application limit, and extended profiles cannot save overlapping source rectangles.

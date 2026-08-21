@@ -107,4 +107,32 @@ describe('known display state hydration', () => {
 
     expect(hydrateKnownDisplayState([inactive], []).displays[0].mode.width).toBe(0);
   });
+
+  it('persists monitor numbers when Windows changes enumeration order', () => {
+    const first = { ...activeDisplay, id: 'win:first', name: 'First', displayNumber: 1 };
+    const second = { ...activeDisplay, id: 'win:second', name: 'Second', displayNumber: 2 };
+    const third = { ...activeDisplay, id: 'win:third', name: 'Third', displayNumber: 3 };
+
+    const result = hydrateKnownDisplayState([third, first, second], [first, second, third]);
+
+    expect(result.displays.map((display) => [display.name, display.displayNumber])).toEqual([
+      ['First', 1],
+      ['Second', 2],
+      ['Third', 3],
+    ]);
+  });
+
+  it('assigns unnumbered displays once and appends newly connected displays', () => {
+    const first = { ...activeDisplay, id: 'win:first', name: 'First' };
+    const second = { ...activeDisplay, id: 'win:second', name: 'Second' };
+    const initial = hydrateKnownDisplayState([first, second], []);
+    const third = { ...activeDisplay, id: 'win:third', name: 'Third' };
+    const next = hydrateKnownDisplayState([third, second, first], initial.knownDisplays);
+
+    expect(next.displays.map((display) => [display.name, display.displayNumber])).toEqual([
+      ['First', 1],
+      ['Second', 2],
+      ['Third', 3],
+    ]);
+  });
 });

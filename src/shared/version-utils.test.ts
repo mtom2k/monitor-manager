@@ -3,6 +3,6 @@ import { formatVersionLabel } from './version-utils';
 
 describe('version label', () => {
   it('formats the packaged application version for the tray menu', () => {
-    expect(formatVersionLabel('0.3.0')).toBe('Version 0.3.0');
+    expect(formatVersionLabel('0.3.1')).toBe('Version 0.3.1');
   });
 });

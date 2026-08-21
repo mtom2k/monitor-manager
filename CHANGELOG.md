@@ -2,6 +2,25 @@
 
 All notable changes are recorded here.
 
+## 0.3.1 - 2026-08-20
+
+### Fixed
+
+- Serialized native display operations so tray profile switches cannot race display refreshes or another profile application.
+- Verified every Windows profile application and retried up to three times when the operating system did not retain topology, resolution, refresh rate, orientation, position, scaling, or HDR state on the first pass.
+- Persisted monitor numbers by stable physical target instead of deriving them from Windows enumeration order.
+- Prevented newly enabled or newly connected displays from overlapping existing displays in Arrangement Preview or saved profiles.
+
+### Changed
+
+- Made Arrangement Preview horizontally scrollable when a large display topology cannot remain readable inside the available width.
+- Disabled tray profile entries while a profile operation is in progress and surfaced a Windows notification if a tray application fails.
+
+### Verified
+
+- Added stable numbering, transient native failure retry, application convergence, overlapping-layout, and twelve-display regression coverage.
+- Reproduced Windows error 87 during a one-click Racing Sim to Default transition and verified that the retry restored every requested setting without a second user action.
+
 ## 0.3.0 - 2026-08-15
 
 ### Added

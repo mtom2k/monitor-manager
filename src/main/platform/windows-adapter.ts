@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import type { ApplyResult, DisplayInfo, DisplayProfile, PlatformCapabilities } from '../../shared/types';
+import { profileApplyMismatches } from '../../shared/profile-apply-utils';
 import type { DisplayAdapter } from './display-adapter';
 
 const execFileAsync = promisify(execFile);
@@ -15,6 +16,7 @@ interface NativeResponse<T = unknown> {
 }
 
 export class WindowsDisplayAdapter implements DisplayAdapter {
+  private operation: Promise<void> = Promise.resolve();
   readonly capabilities: PlatformCapabilities = {
     platform: 'windows',
     canConfigureDisplays: true,
@@ -28,6 +30,10 @@ export class WindowsDisplayAdapter implements DisplayAdapter {
   };
 
   async listDisplays(): Promise<DisplayInfo[]> {
+    return this.enqueue(() => this.listDisplaysNow());
+  }
+
+  private async listDisplaysNow(): Promise<DisplayInfo[]> {
     const response = await this.invoke<DisplayInfo[]>('list');
     if (!response.ok || !response.data) {
       throw new Error(response.message ?? 'Windows did not return display information.');
@@ -36,23 +42,61 @@ export class WindowsDisplayAdapter implements DisplayAdapter {
   }
 
   async applyProfile(profile: DisplayProfile): Promise<ApplyResult> {
-    const response = await this.invoke<DisplayInfo[]>('apply', profile);
-    return {
-      ok: response.ok,
-      message: response.message ?? (response.ok ? 'Display profile applied.' : 'The profile could not be applied.'),
-      warnings: response.warnings,
-      displays: response.data,
-    };
+    return this.enqueue(async () => {
+      let lastMismatches: string[] = [];
+      let lastFailure = '';
+      let lastDisplays: DisplayInfo[] | undefined;
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        const response = await this.invoke<DisplayInfo[]>('apply', profile);
+        if (!response.ok) {
+          lastFailure = response.message ?? 'The profile could not be applied.';
+          lastDisplays = response.data;
+          if (attempt < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 900));
+            continue;
+          }
+          return { ok: false, message: lastFailure, warnings: response.warnings, displays: lastDisplays };
+        }
+        lastFailure = '';
+        const displays = response.data ?? await this.listDisplaysNow();
+        lastDisplays = displays;
+        lastMismatches = profileApplyMismatches(profile, displays);
+        if (!lastMismatches.length) {
+          const warnings = [...(response.warnings ?? [])];
+          if (attempt > 1) warnings.push(`Windows required ${attempt} passes to retain the complete profile.`);
+          return {
+            ok: true,
+            message: response.message ?? 'Display profile applied.',
+            warnings,
+            displays,
+          };
+        }
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 900));
+      }
+      return {
+        ok: false,
+        message: lastFailure || `Windows did not retain the complete profile: ${lastMismatches.join('; ')}.`,
+        displays: lastDisplays,
+      };
+    });
   }
 
   async setHdr(displayId: string, enabled: boolean): Promise<ApplyResult> {
-    const response = await this.invoke<DisplayInfo[]>('hdr', { displayId, enabled });
-    return {
-      ok: response.ok,
-      message: response.message ?? (response.ok ? 'HDR setting updated.' : 'HDR could not be updated.'),
-      warnings: response.warnings,
-      displays: response.data,
-    };
+    return this.enqueue(async () => {
+      const response = await this.invoke<DisplayInfo[]>('hdr', { displayId, enabled });
+      return {
+        ok: response.ok,
+        message: response.message ?? (response.ok ? 'HDR setting updated.' : 'HDR could not be updated.'),
+        warnings: response.warnings,
+        displays: response.data,
+      };
+    });
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.operation.then(operation, operation);
+    this.operation = result.then(() => undefined, () => undefined);
+    return result;
   }
 
   private async invoke<T>(command: string, payload?: unknown): Promise<NativeResponse<T>> {

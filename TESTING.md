@@ -11,7 +11,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current suite contains 24 tests across 7 files. Coverage includes:
+The current suite contains 31 tests across 9 files. Coverage includes:
 
 - tray version-label formatting;
 - profile deletion confirmation;
@@ -30,6 +30,11 @@ The current suite contains 24 tests across 7 files. Coverage includes:
 - Windows and macOS native display-settings targets;
 - unsupported-platform settings behavior;
 - Display settings toolbar wiring.
+- accepted-state verification for topology, refresh rate, orientation, position, scaling, and HDR;
+- persistent monitor numbering across Windows enumeration changes;
+- new-monitor number assignment;
+- collision-safe layout normalization;
+- twelve-display layout coverage without an application-level fixed limit.
 
 ## Native Windows discovery
 
@@ -76,25 +81,44 @@ Environment:
 | Windows native Display settings launch | Pass, packaged v0.3.0 opened System > Display |
 | macOS Displays settings targets | Pass, automated target and fallback validation; physical hardware pending |
 | Packaged native helper path | Pass |
-| Packaged tray version row | Pass, Version 0.3.0 directly above Quit |
+| Packaged tray version row | Pass, Version 0.3.1 directly above Quit |
 | Main interface visual review | Pass |
 | Signal controls visual review | Pass |
 | Settings visual review | Pass |
 | Delete confirmation visual review | Pass |
 | Primary star visual review | Pass |
 
+### Three-monitor regression verification
+
+Date: 2026-08-20
+
+Environment added a Gigabyte G34WQC A over DisplayPort to the existing AW3225QF and M28U setup.
+
+| Test | Result |
+| --- | --- |
+| Discover available physical targets | Pass, three stable targets with one currently disabled |
+| Persistent numbering | Pass, AW3225QF 1, G34WQC A 2, M28U 3 before and after topology changes |
+| Three-display draft preview | Pass, G34WQC A placed to the right of the valid AW3225QF and M28U rectangles with no overlap |
+| Arbitrary-count layout | Pass, automated twelve-display coverage with no fixed application limit |
+| Apply Racing Sim profile | Pass, G34WQC A at 3440 x 1440, 144 Hz, landscape, 125% scaling, primary |
+| Restore Default profile after topology change | Pass, first detailed Windows commit returned error 87; serialized retry converged without another user action |
+| Restore AW3225QF signal | Pass, 3840 x 2160 at 240 Hz, landscape, 150% scaling, HDR on, primary |
+| Restore M28U signal | Pass, 2160 x 3840 at 144 Hz, portrait, 150% scaling, HDR off |
+| Final baseline comparison | Pass, all enabled states, modes, positions, rotations, scales, primary state, and HDR states matched |
+
 The final hardware state was restored after every topology or scaling test:
 
 - AW3225QF: 3840 x 2160 at 240 Hz, landscape, 150% scaling, HDR on, primary
 - M28U: 2160 x 3840 at 144 Hz, portrait, 150% scaling, HDR off
+- G34WQC A: connected and disabled, preserved as monitor 2
 
 ## Release artifacts
 
-Monitor Manager 0.3.0 SHA-256 hashes:
+Monitor Manager 0.3.1 SHA-256 hashes:
 
 ```text
-portable  B5CF28568A224809E12EEF9FA2E6D345E790E6BBFC766E84FCBFC29B8611263C
-setup     6C11C1EA37EBAF4819CBF1CFF4E935E93E71ACC8D6F0A9DD0638137D52FF1AC7
+portable  26C340AFDA78FD7D90CD064E95A50BE8C9AB93CCCF48C2A2996FB9561BBA44A6
+setup     92E258E9C675E9CDD0472C8254B18ADFCED53915478B25A592584A9015100799
 ```
 
 ## Visual smoke capture
@@ -112,7 +136,7 @@ The packaged tray menu can be serialized with:
 
 ```powershell
 $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
-& '.\release\Monitor Manager-0.3.0-x64-portable.exe'
+& '.\release\Monitor Manager-0.3.1-x64-portable.exe'
 ```
 
 ## Manual release checklist
@@ -126,7 +150,7 @@ $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
 - [ ] Enter Duplicate with Win+P and confirm both physical monitors are labeled Mirrored by Windows.
 - [ ] Confirm Duplicate Current setup cannot be saved or edited.
 - [ ] Apply a saved extended profile from Duplicate and confirm independent modes are restored.
-- [ ] Confirm Version 0.3.0 appears immediately above Quit Monitor Manager.
+- [ ] Confirm Version 0.3.1 appears immediately above Quit Monitor Manager.
 - [ ] Open native Display settings from the main toolbar and confirm the correct operating-system page appears.
 - [ ] Change resolution, refresh rate, scale, or arrangement in native settings, return to Monitor Manager, and confirm Current setup refreshes.
 - [ ] Apply a Monitor Manager change while native settings is open and confirm the operating-system panel reflects the accepted state.
