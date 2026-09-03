@@ -1,6 +1,6 @@
 # 🖥️ Monitor Manager
 
-[![Version](https://img.shields.io/badge/version-0.3.1-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.3.1)
+[![Version](https://img.shields.io/badge/version-0.3.2-748df3)](https://github.com/mtom2k/monitor-manager/releases/tag/v0.3.2)
 [![License](https://img.shields.io/badge/license-MIT-748df3)](LICENSE)
 [![CI](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/mtom2k/monitor-manager/actions/workflows/ci.yml)
 
@@ -21,6 +21,7 @@ Monitor Manager is a tray application for switching complete multi-monitor setup
 - Open Windows Display settings or macOS Displays settings directly from the main toolbar.
 - Identify connected displays with numbered overlays.
 - Start automatically at login.
+- Start minimized so only the tray or menu-bar icon appears until the application is opened.
 - Use the supplied Monitor Manager icon in the window, tray, and packaged application.
 
 ## Screenshots

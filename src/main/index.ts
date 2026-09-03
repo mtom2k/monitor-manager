@@ -16,11 +16,13 @@ import type { DisplayInfo, SaveProfileInput } from '../shared/types';
 import { IPC } from '../shared/types';
 import { formatVersionLabel } from '../shared/version-utils';
 import { systemDisplaySettingsTargets } from '../shared/system-settings-utils';
+import { shouldShowMainWindowAtLaunch } from '../shared/startup-utils';
 import type { DisplayAdapter } from './platform/display-adapter';
 import { MacOsDisplayAdapter } from './platform/macos-adapter';
 import { UnsupportedDisplayAdapter } from './platform/unsupported-adapter';
 import { WindowsDisplayAdapter } from './platform/windows-adapter';
 import { DisplayStateStore } from './services/display-state-store';
+import { AppSettingsStore } from './services/app-settings-store';
 import { ProfileStore } from './services/profile-store';
 
 let mainWindow: BrowserWindow | null = null;
@@ -29,11 +31,14 @@ let trayMenu: Menu | null = null;
 let adapter: DisplayAdapter;
 let profileStore: ProfileStore;
 let displayStateStore: DisplayStateStore;
+let appSettingsStore: AppSettingsStore;
 let isQuitting = false;
 let displayRefreshTimer: NodeJS.Timeout | undefined;
 let profileApplyInProgress = false;
 
-const smokeOutputPath = process.env.MONITOR_MANAGER_SMOKE_CAPTURE ?? process.env.MONITOR_MANAGER_TRAY_SMOKE_RESULT;
+const smokeOutputPath = process.env.MONITOR_MANAGER_SMOKE_CAPTURE
+  ?? process.env.MONITOR_MANAGER_TRAY_SMOKE_RESULT
+  ?? process.env.MONITOR_MANAGER_STARTUP_SMOKE_RESULT;
 if (smokeOutputPath) {
   app.setPath('userData', path.join(path.dirname(smokeOutputPath), '.monitor-manager-smoke-data'));
 }
@@ -88,7 +93,7 @@ async function openDisplaySettings(): Promise<void> {
   throw new Error(`Could not open native display settings: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
-function createMainWindow(): void {
+function createMainWindow(showOnReady = true): void {
   mainWindow = new BrowserWindow({
     width: 1240,
     height: 800,
@@ -120,7 +125,7 @@ function createMainWindow(): void {
   }
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+    if (showOnReady) mainWindow?.show();
     const smokeCapturePath = process.env.MONITOR_MANAGER_SMOKE_CAPTURE;
     if (smokeCapturePath) {
       setTimeout(async () => {
@@ -218,6 +223,23 @@ function scheduleTraySmokeResult(): void {
   }, 1200);
 }
 
+function scheduleStartupSmokeResult(startMinimized: boolean): void {
+  const resultPath = process.env.MONITOR_MANAGER_STARTUP_SMOKE_RESULT;
+  if (!resultPath) return;
+
+  setTimeout(() => {
+    void (async () => {
+      await writeFile(resultPath, `${JSON.stringify({
+        startMinimized,
+        windowVisible: mainWindow?.isVisible() ?? false,
+        trayCreated: Boolean(tray),
+      }, null, 2)}\n`, 'utf8');
+      isQuitting = true;
+      app.quit();
+    })();
+  }, 1200);
+}
+
 async function refreshDisplays(broadcast = false): Promise<DisplayInfo[]> {
   const displays = await displayStateStore.hydrate(await adapter.listDisplays());
   if (broadcast) {
@@ -287,13 +309,17 @@ async function identifyDisplays(): Promise<void> {
 }
 
 function registerIpc(): void {
-  ipcMain.handle(IPC.getSnapshot, async () => ({
-    displays: await refreshDisplays(false),
-    profiles: await profileStore.list(),
-    capabilities: adapter.capabilities,
-    startupEnabled: app.getLoginItemSettings().openAtLogin,
-    appVersion: app.getVersion(),
-  }));
+  ipcMain.handle(IPC.getSnapshot, async () => {
+    const settings = await appSettingsStore.get();
+    return {
+      displays: await refreshDisplays(false),
+      profiles: await profileStore.list(),
+      capabilities: adapter.capabilities,
+      startupEnabled: app.getLoginItemSettings().openAtLogin,
+      startMinimized: settings.startMinimized,
+      appVersion: app.getVersion(),
+    };
+  });
   ipcMain.handle(IPC.refreshDisplays, () => refreshDisplays(false));
   ipcMain.handle(IPC.saveProfile, async (_event, input: SaveProfileInput) => {
     const profiles = await profileStore.save(input);
@@ -331,9 +357,17 @@ function registerIpc(): void {
   });
   ipcMain.handle(IPC.identifyDisplays, () => identifyDisplays());
   ipcMain.handle(IPC.openDisplaySettings, () => openDisplaySettings());
-  ipcMain.handle(IPC.setStartup, (_event, enabled: boolean) => {
-    app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: true });
+  ipcMain.handle(IPC.setStartup, async (_event, enabled: boolean) => {
+    const settings = await appSettingsStore.get();
+    app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: settings.startMinimized });
     return app.getLoginItemSettings().openAtLogin;
+  });
+  ipcMain.handle(IPC.setStartMinimized, async (_event, enabled: boolean) => {
+    const startMinimized = await appSettingsStore.setStartMinimized(enabled);
+    if (app.getLoginItemSettings().openAtLogin) {
+      app.setLoginItemSettings({ openAtLogin: true, openAsHidden: startMinimized });
+    }
+    return startMinimized;
   });
   ipcMain.handle(IPC.openExternal, async (_event, url: string) => {
     const parsed = new URL(url);
@@ -344,16 +378,22 @@ function registerIpc(): void {
 
 app.on('second-instance', showMainWindow);
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   app.setAppUserModelId('com.monitormanager.app');
   nativeTheme.themeSource = 'dark';
   adapter = createAdapter();
   profileStore = new ProfileStore();
   displayStateStore = new DisplayStateStore();
+  appSettingsStore = new AppSettingsStore();
+  const settings = await appSettingsStore.get();
   registerIpc();
-  createMainWindow();
+  createMainWindow(shouldShowMainWindowAtLaunch(
+    settings.startMinimized,
+    Boolean(process.env.MONITOR_MANAGER_SMOKE_CAPTURE),
+  ));
   createTray();
   scheduleTraySmokeResult();
+  scheduleStartupSmokeResult(settings.startMinimized);
 
   screen.on('display-added', scheduleDisplayRefresh);
   screen.on('display-removed', scheduleDisplayRefresh);

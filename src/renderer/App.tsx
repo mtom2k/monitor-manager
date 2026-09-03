@@ -567,10 +567,14 @@ function SettingsPanel({ snapshot, onSnapshot }: { snapshot: AppSnapshot | null;
     const startupEnabled = await window.monitorManager.setStartup(!snapshot.startupEnabled);
     onSnapshot({ ...snapshot, startupEnabled });
   };
+  const toggleStartMinimized = async () => {
+    const startMinimized = await window.monitorManager.setStartMinimized(!snapshot.startMinimized);
+    onSnapshot({ ...snapshot, startMinimized });
+  };
   return (
     <section className="settings-panel">
       <div className="settings-hero"><div className="settings-logo"><img src="../assets/icons/icon-256.png" alt="Monitor Manager" /></div><div><h2>Monitor Manager</h2><p>Monitor Manager is a display controller that lives in your system tray. It detects connected monitors, lets you enable or disable each display, controls HDR where supported, and saves complete display profiles for one-click switching.</p></div></div>
-      <div className="settings-group"><h3>General</h3><button className="settings-row" onClick={toggleStartup}><span><strong>Start at login</strong><small>Keep your display profiles one click away after signing in.</small></span><span className={`switch ${snapshot.startupEnabled ? 'on' : ''}`}><span /></span></button></div>
+      <div className="settings-group"><h3>General</h3><button className="settings-row" aria-pressed={snapshot.startupEnabled} onClick={toggleStartup}><span><strong>Start at login</strong><small>Keep your display profiles one click away after signing in.</small></span><span className={`switch ${snapshot.startupEnabled ? 'on' : ''}`}><span /></span></button><button className="settings-row" aria-pressed={snapshot.startMinimized} onClick={toggleStartMinimized}><span><strong>Start minimized</strong><small>Launch in the system tray without showing the main window.</small></span><span className={`switch ${snapshot.startMinimized ? 'on' : ''}`}><span /></span></button></div>
       <div className="settings-group about"><h3>About</h3><p>Version {snapshot.appVersion}. Configuration is stored locally on this computer.</p></div>
     </section>
   );

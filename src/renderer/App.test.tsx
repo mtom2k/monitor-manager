@@ -57,7 +57,8 @@ const snapshot: AppSnapshot = {
     notes: [],
   },
   startupEnabled: false,
-  appVersion: '0.3.1',
+  startMinimized: false,
+  appVersion: '0.3.2',
 };
 
 function buttonWithText(text: string): HTMLButtonElement {
@@ -86,6 +87,7 @@ describe('profile deletion', () => {
       identifyDisplays: vi.fn(),
       openDisplaySettings: vi.fn(),
       setStartup: vi.fn(async () => false),
+      setStartMinimized: vi.fn(async () => false),
       openExternal: vi.fn(),
       onDisplaysChanged: noopListener,
       onProfileApplied: noopListener,
@@ -148,6 +150,7 @@ describe('system display settings', () => {
       identifyDisplays: vi.fn(),
       openDisplaySettings,
       setStartup: vi.fn(async () => false),
+      setStartMinimized: vi.fn(async () => false),
       openExternal: vi.fn(),
       onDisplaysChanged: noopListener,
       onProfileApplied: noopListener,
@@ -163,6 +166,47 @@ describe('system display settings', () => {
 
     await act(async () => buttonWithText('Display settings').click());
     expect(openDisplaySettings).toHaveBeenCalledOnce();
+
+    act(() => root.unmount());
+  });
+});
+
+describe('application settings', () => {
+  it('persists the start-minimized preference from Settings', async () => {
+    const setStartMinimized = vi.fn(async () => true);
+    const noopListener = vi.fn(() => () => undefined);
+    window.monitorManager = {
+      getSnapshot: vi.fn(async () => snapshot),
+      refreshDisplays: vi.fn(async () => [display]),
+      saveProfile: vi.fn(async () => [profile]),
+      deleteProfile: vi.fn(),
+      applyProfile: vi.fn(),
+      applyConfiguration: vi.fn(),
+      setHdr: vi.fn(),
+      identifyDisplays: vi.fn(),
+      openDisplaySettings: vi.fn(),
+      setStartup: vi.fn(async () => false),
+      setStartMinimized,
+      openExternal: vi.fn(),
+      onDisplaysChanged: noopListener,
+      onProfileApplied: noopListener,
+    } satisfies MonitorManagerApi;
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    act(() => document.querySelector<HTMLButtonElement>('.sidebar-footer button')?.click());
+    const startMinimizedButton = buttonWithText('Start minimized');
+    expect(startMinimizedButton.getAttribute('aria-pressed')).toBe('false');
+    await act(async () => startMinimizedButton.click());
+
+    expect(setStartMinimized).toHaveBeenCalledWith(true);
+    expect(startMinimizedButton.getAttribute('aria-pressed')).toBe('true');
 
     act(() => root.unmount());
   });
@@ -192,6 +236,7 @@ describe('Windows projection compatibility', () => {
       identifyDisplays: vi.fn(),
       openDisplaySettings: vi.fn(),
       setStartup: vi.fn(async () => false),
+      setStartMinimized: vi.fn(async () => false),
       openExternal: vi.fn(),
       onDisplaysChanged: noopListener,
       onProfileApplied: noopListener,

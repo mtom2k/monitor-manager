@@ -41,7 +41,7 @@ The renderer has no direct Node.js access. Electron context isolation is enabled
 - display-change event debouncing;
 - native display-settings launching and focus-based refresh;
 - IPC validation;
-- start-at-login settings;
+- start-at-login and start-minimized settings;
 - platform adapter selection.
 
 ### Platform adapters
@@ -82,6 +82,8 @@ The application writes local JSON under Electron's per-user `userData` directory
 ```
 
 `known-displays.json` stores the last usable active state for each display. Windows often omits source mode, position, rotation, and scaling information after a monitor is disabled. Monitor Manager hydrates the inactive target from this cache so the monitor remains editable and can return with its previous configuration.
+
+`settings.json` stores schema-versioned application preferences. `startMinimized` defaults to `false`, is changed through typed IPC, and is read before the initial window becomes visible. The renderer process cannot choose startup visibility directly.
 
 Mirrored scans are not written to the last-known cache. Their shared resolution, orientation, and refresh rate are temporary projection values and must not replace a monitor's independent recovery state.
 

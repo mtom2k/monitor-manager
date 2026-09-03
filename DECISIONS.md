@@ -141,3 +141,13 @@ This file records decisions that materially affect maintenance, compatibility, o
 **Decision:** Assign persistent numbers to stable physical target IDs in the known-display cache. Sort hydrated scans by that number. Preserve valid profile rectangles and place only colliding enabled targets at the current right edge. Allow the preview to scroll instead of shrinking monitor tiles below a readable size.
 
 **Consequences:** Numbers remain stable across restarts and profile changes. New displays append predictably, arbitrary display collections are handled without a fixed application limit, and extended profiles cannot save overlapping source rectangles.
+
+## ADR-016: Persist startup visibility separately from login registration
+
+**Status:** Accepted
+
+**Context:** Starting at login and starting with the main window hidden are separate user choices. Relying only on Electron login-item hints is platform-dependent and does not cover a normal application launch.
+
+**Decision:** Store `startMinimized` in schema-versioned local settings and read it before the initial BrowserWindow is shown. Keep the renderer-facing method boolean-only. A tray click, application activation, or second launch still opens and focuses the main window.
+
+**Consequences:** Fresh launches can remain tray-only on Windows and menu-bar-only on macOS without changing login registration. The default remains visible for existing users, corrupt or missing settings fall back safely, and visual smoke capture can explicitly show the window without changing the saved preference.

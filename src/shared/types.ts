@@ -80,6 +80,7 @@ export interface AppSnapshot {
   profiles: DisplayProfile[];
   capabilities: PlatformCapabilities;
   startupEnabled: boolean;
+  startMinimized: boolean;
   appVersion: string;
 }
 
@@ -107,6 +108,7 @@ export interface MonitorManagerApi {
   identifyDisplays(): Promise<void>;
   openDisplaySettings(): Promise<void>;
   setStartup(enabled: boolean): Promise<boolean>;
+  setStartMinimized(enabled: boolean): Promise<boolean>;
   openExternal(url: string): Promise<void>;
   onDisplaysChanged(callback: (displays: DisplayInfo[]) => void): () => void;
   onProfileApplied(callback: (profileId: string) => void): () => void;
@@ -123,6 +125,7 @@ export const IPC = {
   identifyDisplays: 'monitor-manager:identify-displays',
   openDisplaySettings: 'monitor-manager:open-display-settings',
   setStartup: 'monitor-manager:set-startup',
+  setStartMinimized: 'monitor-manager:set-start-minimized',
   openExternal: 'monitor-manager:open-external',
   displaysChanged: 'monitor-manager:displays-changed',
   profileApplied: 'monitor-manager:profile-applied',

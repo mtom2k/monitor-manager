@@ -13,6 +13,7 @@ const api: MonitorManagerApi = {
   identifyDisplays: () => ipcRenderer.invoke(IPC.identifyDisplays),
   openDisplaySettings: () => ipcRenderer.invoke(IPC.openDisplaySettings),
   setStartup: (enabled) => ipcRenderer.invoke(IPC.setStartup, enabled),
+  setStartMinimized: (enabled) => ipcRenderer.invoke(IPC.setStartMinimized, enabled),
   openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
   onDisplaysChanged: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, displays: DisplayInfo[]) => callback(displays);

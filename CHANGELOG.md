@@ -2,6 +2,23 @@
 
 All notable changes are recorded here.
 
+## 0.3.2 - 2026-09-02
+
+### Added
+
+- A persistent Start minimized setting under Settings > General.
+- Startup visibility checks that keep the main window hidden while leaving Monitor Manager available from the tray or menu bar.
+
+### Changed
+
+- Kept Start at login and Start minimized independent while passing the minimized preference to supported login-item platforms.
+- Preserved explicit window opening through the tray icon, application activation, and a second launch.
+
+### Verified
+
+- Added settings persistence, invalid-file fallback, startup visibility, and renderer toggle regression coverage.
+- Added a packaged startup smoke probe that reports the saved preference, tray creation, and main-window visibility.
+
 ## 0.3.1 - 2026-08-20
 
 ### Fixed

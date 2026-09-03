@@ -2,7 +2,7 @@
 
 ## Current release
 
-Monitor Manager 0.3.1 is a functional Electron desktop application. It is not a static prototype.
+Monitor Manager 0.3.2 is a functional Electron desktop application. It is not a static prototype.
 
 The Windows implementation has passed physical hardware tests for:
 
@@ -21,6 +21,7 @@ The Windows implementation has passed physical hardware tests for:
 - native Windows and macOS display-settings launching;
 - packaged native helper paths;
 - tray profile and version menu behavior.
+- persistent tray-only startup through the Start minimized setting.
 
 The 2026-08-20 three-monitor regression run reproduced a transient Windows error 87 while returning from the single-monitor Racing Sim profile to Default. Version 0.3.1 retried after topology stabilization and restored AW3225QF and M28U resolution, refresh rate, rotation, scaling, coordinates, primary state, and HDR without another user action. G34WQC A remained connected and disabled as requested.
 
@@ -34,6 +35,7 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 - `assets/native/windows-display.ps1`: CCD, mode, scaling, identity, and HDR implementation
 - `src/main/platform/macos-adapter.ts`: macOS discovery and `displayplacer` integration
 - `src/main/services/profile-store.ts`: local profile persistence
+- `src/main/services/app-settings-store.ts`: schema-versioned application preference persistence
 - `src/main/services/display-state-store.ts`: persistent last-known monitor state
 - `src/renderer/App.tsx`: display and profile interaction model
 - `src/renderer/styles.css`: responsive application styling
@@ -66,6 +68,7 @@ The interface uses `#1a1a1e` surfaces, `#748df3` controls, no bloom effects, rea
 19. Treat a Windows profile application as successful only after accepted-state verification passes.
 20. Keep `displayNumber` bound to the stable physical target ID and never derive it from the latest enumeration order.
 21. Preserve valid source rectangles and move only overlapping enabled targets. Do not introduce a fixed display-count limit.
+22. Read Start minimized before showing the initial window. Tray clicks, activation, and second-instance launches must still reveal the window.
 
 ## Profile compatibility
 

@@ -1,6 +1,6 @@
 {
   "name": "monitor-manager",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A cross-platform tray application for managing displays, HDR, and reusable display profiles.",
   "main": "dist-electron/main/index.js",
   "author": "Monitor Manager contributors",

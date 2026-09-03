@@ -11,9 +11,11 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current suite contains 31 tests across 9 files. Coverage includes:
+The current suite contains 38 tests across 11 files. Coverage includes:
 
 - tray version-label formatting;
+- application-settings persistence and invalid-file fallback;
+- start-minimized visibility decisions and Settings toggle wiring;
 - profile deletion confirmation;
 - stable and fallback display matching;
 - stable target precedence when mirrored targets share one Windows source;
@@ -81,7 +83,7 @@ Environment:
 | Windows native Display settings launch | Pass, packaged v0.3.0 opened System > Display |
 | macOS Displays settings targets | Pass, automated target and fallback validation; physical hardware pending |
 | Packaged native helper path | Pass |
-| Packaged tray version row | Pass, Version 0.3.1 directly above Quit |
+| Packaged tray version row | Pass, Version 0.3.2 directly above Quit |
 | Main interface visual review | Pass |
 | Signal controls visual review | Pass |
 | Settings visual review | Pass |
@@ -112,13 +114,24 @@ The final hardware state was restored after every topology or scaling test:
 - M28U: 2160 x 3840 at 144 Hz, portrait, 150% scaling, HDR off
 - G34WQC A: connected and disabled, preserved as monitor 2
 
+### Startup visibility verification
+
+Date: 2026-09-02
+
+| Packaged setting | Saved value | Main window visible | Tray created | Result |
+| --- | --- | --- | --- | --- |
+| Start minimized on | true | false | true | Pass |
+| Start minimized off | false | true | true | Pass |
+
+Both checks used the v0.3.2 portable executable and an isolated user-data directory. The smoke process exited without changing the installed application's preferences.
+
 ## Release artifacts
 
-Monitor Manager 0.3.1 SHA-256 hashes:
+Monitor Manager 0.3.2 SHA-256 hashes:
 
 ```text
-portable  26C340AFDA78FD7D90CD064E95A50BE8C9AB93CCCF48C2A2996FB9561BBA44A6
-setup     92E258E9C675E9CDD0472C8254B18ADFCED53915478B25A592584A9015100799
+portable  36A34557E2FD108DA77ABD76094310BA4A0D805863E5FFF9703D3D618ED01C64
+setup     E9723D3FADBE5EFFA91B9572B2151D4EBB0AA04E45145B60E349E73AA4C48E42
 ```
 
 ## Visual smoke capture
@@ -136,8 +149,10 @@ The packaged tray menu can be serialized with:
 
 ```powershell
 $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
-& '.\release\Monitor Manager-0.3.1-x64-portable.exe'
+& '.\release\Monitor Manager-0.3.2-x64-portable.exe'
 ```
+
+Startup visibility can be serialized with MONITOR_MANAGER_STARTUP_SMOKE_RESULT. Seed settings.json in the isolated .monitor-manager-smoke-data directory first, then confirm the result reports the requested startMinimized value, trayCreated as true, and the expected windowVisible value.
 
 ## Manual release checklist
 
@@ -150,7 +165,9 @@ $env:MONITOR_MANAGER_TRAY_SMOKE_RESULT = "$PWD\artifacts\tray-menu.json"
 - [ ] Enter Duplicate with Win+P and confirm both physical monitors are labeled Mirrored by Windows.
 - [ ] Confirm Duplicate Current setup cannot be saved or edited.
 - [ ] Apply a saved extended profile from Duplicate and confirm independent modes are restored.
-- [ ] Confirm Version 0.3.1 appears immediately above Quit Monitor Manager.
+- [ ] Confirm Version 0.3.2 appears immediately above Quit Monitor Manager.
+- [ ] Enable Start minimized, restart Monitor Manager, and confirm only the tray icon appears.
+- [ ] Open Monitor Manager from its tray icon, disable Start minimized, restart, and confirm the main window appears.
 - [ ] Open native Display settings from the main toolbar and confirm the correct operating-system page appears.
 - [ ] Change resolution, refresh rate, scale, or arrangement in native settings, return to Monitor Manager, and confirm Current setup refreshes.
 - [ ] Apply a Monitor Manager change while native settings is open and confirm the operating-system panel reflects the accepted state.
